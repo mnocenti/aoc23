@@ -1,30 +1,59 @@
-
 aoc23::main!(day1, "../inputs/input1.txt");
 
-aoc23::test_with_example!(day1_2, "../inputs/example1.txt", 281);
+aoc23::test_with_example!(
+    day1_1,
+    "../inputs/example1_1.txt",
+    142,
+    day1_2,
+    "../inputs/example1_2.txt",
+    281
+);
 
-//aoc23::test_with_example!(day1, "../inputs/example1.txt", 13, 140);
-const DIGITS : [(usize, &str); 9] = [(1, "one"), (2,"two"), (3,"three"), (4,"four"), (5,"five"), (6,"six"), (7,"seven"), (8,"eight"), (9,"nine")];
+const DIGITS: [&str; 9] = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
+const SPELLED_DIGITS: [&str; 9] = [
+    "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
+];
 
-fn find_first_digit(s : &str) -> Option<usize> {
-    DIGITS.iter()
-        .filter_map(|(i,w)| Some((s.find(&i.to_string())?.min(s.find(w)?), i)))
-        .min_by(|a,b| a.0.cmp(&b.0)).map(|(_,i)| *i)
+fn first_digit(s: &str) -> Option<usize> {
+    search_digit(|pattern: &str| s.find(pattern), true)
 }
-fn find_last_digit(s : &str) -> Option<usize> {
-    DIGITS.iter()
-        .filter_map(|(i,w)| Some((s.rfind(&i.to_string())?.max(s.rfind(w)?), i)))
-        .max_by(|a,b| a.0.cmp(&b.0)).map(|(_,i)| *i)
+
+fn last_digit(s: &str) -> Option<usize> {
+    search_digit(|pattern: &str| s.rfind(pattern), false)
+}
+
+fn search_digit(search: impl Fn(&str) -> Option<usize>, is_first: bool) -> Option<usize> {
+    let digits_pos = DIGITS
+        .iter()
+        .enumerate()
+        .chain(SPELLED_DIGITS.iter().enumerate())
+        .filter_map(|(i, word)| Some((search(word)?, i + 1)));
+    if is_first {
+        digits_pos.min_by_key(|(pos, _)| *pos).map(|(_, i)| i)
+    } else {
+        digits_pos.max_by_key(|(pos, _)| *pos).map(|(_, i)| i)
+    }
 }
 
 fn day1(input: &str) -> aoc23::MyResult<(usize, usize)> {
-    let part1 = input
+    Ok((day1_1(input)? as usize, day1_2(input)?))
+}
+
+fn day1_1(input: &str) -> aoc23::MyResult<u32> {
+    let digit_at = |s: &str, i| s.chars().nth(i)?.to_digit(10);
+    Ok(input
         .lines()
-        .filter(|s| !s.is_empty()).map(|s: &str| { let mut s = String::from(s); s.retain(|c| c.is_ascii_digit()); (String::from(s.chars().next().unwrap()) + &String::from(s.chars().last().unwrap()) ).parse::<usize>().unwrap() }).sum();
-    
-    Ok((part1,day1_2(input)?))
+        .filter_map(|s: &str| {
+            let first = s.find(|c: char| c.is_ascii_digit())?;
+            let last = s.rfind(|c: char| c.is_ascii_digit())?;
+            Some(10 * digit_at(s, first)? + digit_at(s, last)?)
+        })
+        .sum())
 }
 
 fn day1_2(input: &str) -> aoc23::MyResult<usize> {
-    Ok(input.lines().filter_map(|s| Some(10*find_first_digit(s)? + find_last_digit(s)?)).sum())
+    Ok(input
+        .lines()
+        .filter_map(|s| Some(10 * first_digit(s)? + last_digit(s)?))
+        .sum())
 }
