@@ -1,15 +1,5 @@
-use std::fs::File;
-use std::io::{prelude::*, BufReader};
-
 pub use anyhow::Result;
 use thiserror::Error;
-
-pub fn read_lines(path: &str) -> Result<impl Iterator<Item = String>> {
-    let file = File::open(path)?;
-    let reader = BufReader::new(file);
-
-    Ok(reader.lines().map(Result::unwrap))
-}
 
 #[macro_export]
 macro_rules! main {
@@ -17,6 +7,16 @@ macro_rules! main {
         fn main() -> anyhow::Result<()> {
             let (part1, part2) = $func(include_str!($path))?;
             println!("part1: {}", part1);
+            println!("part2: {}", part2);
+            Ok(())
+        }
+    };
+    ($func1:ident, $func2:ident, $path:literal) => {
+        fn main() -> anyhow::Result<()> {
+            let input = include_str!($path);
+            let part1 = $func1(input)?;
+            println!("part1: {}", part1);
+            let part2 = $func2(input)?;
             println!("part2: {}", part2);
             Ok(())
         }
