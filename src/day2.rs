@@ -92,27 +92,17 @@ impl FromStr for Cubes {
 
     fn from_str(s: &str) -> Result<Self> {
         s.split(',').try_fold(Cubes::default(), |mut cubes, s| {
-            Ok(
-                match s
-                    .trim()
-                    .split_once(' ')
-                    .ok_or(parse_error(s, "missing ' '"))?
-                {
-                    (n, "red") => {
-                        cubes.reds += n.parse::<usize>()?;
-                        cubes
-                    }
-                    (n, "green") => {
-                        cubes.greens += n.parse::<usize>()?;
-                        cubes
-                    }
-                    (n, "blue") => {
-                        cubes.blues += n.parse::<usize>()?;
-                        cubes
-                    }
-                    _ => Err(parse_error(s, ""))?,
-                },
-            )
+            match s
+                .trim()
+                .split_once(' ')
+                .ok_or(parse_error(s, "missing ' '"))?
+            {
+                (n, "red") => cubes.reds += n.parse::<usize>()?,
+                (n, "green") => cubes.greens += n.parse::<usize>()?,
+                (n, "blue") => cubes.blues += n.parse::<usize>()?,
+                _ => Err(parse_error(s, ""))?,
+            }
+            Ok(cubes)
         })
     }
 }
