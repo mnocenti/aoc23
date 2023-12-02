@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 pub use anyhow::Result;
 use thiserror::Error;
 
@@ -81,5 +83,104 @@ pub fn parse_error(text: &str, err: &str) -> ParseError {
     ParseError {
         text: String::from(text),
         err: String::from(err),
+    }
+}
+
+pub fn parse_collect<Item, T: FromIterator<Item>>(
+    s: &str,
+    delim: char,
+) -> Result<T, <Item as FromStr>::Err>
+where
+    Item: FromStr,
+{
+    s.split(delim).map(|st| st.parse()).collect()
+}
+
+pub fn collect_lines<Item, T: FromIterator<Item>>(s: &str) -> Result<T, <Item as FromStr>::Err>
+where
+    Item: FromStr,
+{
+    s.lines().map(|st| st.parse()).collect()
+}
+
+#[macro_export]
+macro_rules! set_matching_member {
+    ($t:ident, $s:ident, $member:ident : $regex:literal) => {{
+        static RE: once_cell::sync::Lazy<regex::Regex> =
+            once_cell::sync::Lazy::new(|| regex::Regex::new($regex).unwrap());
+        if let Some(cap) = RE.captures($s) {
+            $t.$member = cap.get(1).unwrap().as_str().parse()?;
+            return Ok($t);
+        }
+    }};
+}
+#[macro_export]
+macro_rules! parse_matching {
+    ($string:ident, $delim:literal, $T:ty { $($member:ident : $regex:tt),+ }) => {
+        $string.split($delim).try_fold(<$T>::default(), |mut t, s| {
+            $(
+                set_matching_member!(t, s, $member : $regex);
+            )*
+            #[allow(unreachable_code)]
+            Err(aoc23::parse_error($string, ""))?
+        })
+    };
+}
+#[macro_export]
+macro_rules! impl_fromstr_matching {
+    (delim : $delim:literal, $T:ty { $($member:ident : $regex:tt),+ $(,)?}) => {
+        impl FromStr for $T {
+            type Err = anyhow::Error;
+
+            fn from_str(s: &str) -> Result<Self> {
+                parse_matching!(s, $delim, $T { $($member : $regex),* })
+            }
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! set_member_ordered {
+    ($t:ident, $s:ident, $member:ident : { collect $delim:literal}) => {{
+        $t.$member = aoc23::parse_collect($s, $delim)?;
+    }};
+    ($t:ident, $s:ident, $member:ident : $regex:literal) => {{
+        static RE: once_cell::sync::Lazy<regex::Regex> =
+            once_cell::sync::Lazy::new(|| regex::Regex::new($regex).unwrap());
+        if let Some(cap) = RE.captures($s) {
+            $t.$member = cap.get(1).unwrap().as_str().parse()?;
+        } else {
+            return Err(aoc23::parse_error(
+                $s,
+                &format!("failed to match regex {}", $regex),
+            ))?;
+        }
+    }};
+}
+#[macro_export]
+macro_rules! parse_ordered {
+    ($string:ident, $delim:literal, $T:ty { $($member:ident : $regex:tt),+ }) => {{
+        let mut t = <$T>::default();
+        let mut split = $string.split($delim);
+        $({
+            let s = split.next().unwrap();
+            set_member_ordered!(t, s, $member : $regex);
+        })*
+        if split.next().is_some() {
+            Err(aoc23::parse_error($string, "too much delimiters"))?
+        }
+        Ok(t)
+    }};
+}
+#[macro_export]
+macro_rules! impl_fromstr_ordered {
+    (delim : $delim:literal, $T:ty { $($member:ident : $regex:tt),+ $(,)?}) => {
+        impl FromStr for $T {
+            type Err = anyhow::Error;
+
+            fn from_str(s: &str) -> Result<Self> {
+                parse_ordered!(s, $delim, $T { $($member : $regex),* })
+            }
+        }
     }
 }

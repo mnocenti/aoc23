@@ -11,7 +11,7 @@ fn day2(input: &str) -> Result<(usize, usize)> {
         greens: 13,
         blues: 14,
     };
-    let games = parse_games(input)?;
+    let games: Vec<Game> = collect_lines(input)?;
     let part1 = games
         .iter()
         .filter_map(|game| game.is_possible(&CUBE_LIMITS).then_some(game.id))
@@ -22,15 +22,19 @@ fn day2(input: &str) -> Result<(usize, usize)> {
     Ok((part1, part2))
 }
 
-fn parse_games(input: &str) -> Result<Vec<Game>> {
-    input.lines().map(Game::from_str).collect()
-}
-
-#[derive(Debug)]
+#[derive(Debug, Default)]
 struct Game {
     id: usize,
     cubes_sets: Vec<Cubes>,
 }
+
+impl_fromstr_ordered!(
+    delim: ':',
+    Game {
+        id: "Game ([0-9]+)",
+        cubes_sets : {collect ';'},
+    }
+);
 
 #[derive(Default, Debug)]
 struct Cubes {
@@ -38,6 +42,15 @@ struct Cubes {
     greens: usize,
     blues: usize,
 }
+
+impl_fromstr_matching!(
+    delim: ',',
+    Cubes {
+        reds: "([0-9]+) red",
+        greens: "([0-9]+) green",
+        blues: "([0-9]+) blue",
+    }
+);
 
 impl Game {
     fn is_possible(&self, game_limits: &Cubes) -> bool {
@@ -58,24 +71,6 @@ impl Game {
     }
 }
 
-impl FromStr for Game {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self> {
-        let (start, rest) = s.split_once(':').ok_or(parse_error(s, "missing ':'"))?;
-        let id = start
-            .split_once(' ')
-            .ok_or(parse_error(s, "missing ' '"))?
-            .1
-            .parse()?;
-        let cubes_sets: Result<_, Self::Err> = rest.split(';').map(Cubes::from_str).collect();
-        Ok(Game {
-            id,
-            cubes_sets: cubes_sets?,
-        })
-    }
-}
-
 impl Cubes {
     fn is_possible(&self, game_limits: &Cubes) -> bool {
         self.reds <= game_limits.reds
@@ -84,25 +79,5 @@ impl Cubes {
     }
     fn power(&self) -> usize {
         self.reds * self.greens * self.blues
-    }
-}
-
-impl FromStr for Cubes {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self> {
-        s.split(',').try_fold(Cubes::default(), |mut cubes, s| {
-            match s
-                .trim()
-                .split_once(' ')
-                .ok_or(parse_error(s, "missing ' '"))?
-            {
-                (n, "red") => cubes.reds += n.parse::<usize>()?,
-                (n, "green") => cubes.greens += n.parse::<usize>()?,
-                (n, "blue") => cubes.blues += n.parse::<usize>()?,
-                _ => Err(parse_error(s, ""))?,
-            }
-            Ok(cubes)
-        })
     }
 }
