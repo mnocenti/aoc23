@@ -1,6 +1,7 @@
-aoc23::main!(day1, "../inputs/input1.txt");
+use aoc23::*;
+main!(day1, "../inputs/input1.txt");
 
-aoc23::test_with_example!(
+test_with_example!(
     day1_1,
     "../inputs/example1_1.txt",
     142,
@@ -35,11 +36,11 @@ fn search_digit(search: impl Fn(&str) -> Option<usize>, is_first: bool) -> Optio
     }
 }
 
-fn day1(input: &str) -> aoc23::MyResult<(usize, usize)> {
+fn day1(input: &str) -> Result<(usize, usize)> {
     Ok((day1_1(input)? as usize, day1_2(input)?))
 }
 
-fn day1_1(input: &str) -> aoc23::MyResult<u32> {
+fn day1_1(input: &str) -> Result<u32> {
     let digit_at = |s: &str, i| s.chars().nth(i)?.to_digit(10);
     Ok(input
         .lines()
@@ -51,7 +52,7 @@ fn day1_1(input: &str) -> aoc23::MyResult<u32> {
         .sum())
 }
 
-fn day1_2(input: &str) -> aoc23::MyResult<usize> {
+fn day1_2(input: &str) -> Result<usize> {
     Ok(input
         .lines()
         .filter_map(|s| Some(10 * first_digit(s)? + last_digit(s)?))

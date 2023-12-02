@@ -1,8 +1,9 @@
+use aoc23::*;
 use std::str::FromStr;
 
-aoc23::main!(day2, "../inputs/input2.txt");
+main!(day2, "../inputs/input2.txt");
 
-aoc23::test_with_example!(day2, "../inputs/example2.txt", 8, 2286);
+test_with_example!(day2, "../inputs/example2.txt", 8, 2286);
 
 #[derive(Default, Debug)]
 struct Handful {
@@ -41,7 +42,7 @@ impl Game {
     }
 }
 
-fn day2(input: &str) -> aoc23::MyResult<(usize, usize)> {
+fn day2(input: &str) -> Result<(usize, usize)> {
     const CUBE_LIMITS: Handful = Handful {
         reds: 12,
         greens: 13,
@@ -63,15 +64,10 @@ fn day2(input: &str) -> aoc23::MyResult<(usize, usize)> {
     Ok((part1, part2))
 }
 
-fn parse_error(string: &str, err: &str) -> String {
-    format!("Failed to parse '{}': {}", string, err)
-}
-
 impl FromStr for Game {
-    type Err = Box<dyn std::error::Error>;
+    type Err = anyhow::Error;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let parse_error = |string, err| format!("Failed to parse {}: {}", string, err);
+    fn from_str(s: &str) -> Result<Self> {
         let (start, rest) = s.split_once(':').ok_or(parse_error(s, "missing ':'"))?;
         let id = start
             .split_once(' ')
@@ -83,29 +79,35 @@ impl FromStr for Game {
     }
 }
 impl FromStr for Handful {
-    type Err = Box<dyn std::error::Error>;
+    type Err = anyhow::Error;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> Result<Self> {
         s.split(',').try_fold(Handful::default(), |mut handful, s| {
-            Ok(match s.trim().split_once(' ').ok_or("missing ' '")? {
-                (n, "red") => {
-                    handful.reds += n.parse::<usize>()?;
-                    handful
-                }
-                (n, "green") => {
-                    handful.greens += n.parse::<usize>()?;
-                    handful
-                }
-                (n, "blue") => {
-                    handful.blues += n.parse::<usize>()?;
-                    handful
-                }
-                _ => Err(parse_error(s, ""))?,
-            })
+            Ok(
+                match s
+                    .trim()
+                    .split_once(' ')
+                    .ok_or(parse_error(s, "missing ' '"))?
+                {
+                    (n, "red") => {
+                        handful.reds += n.parse::<usize>()?;
+                        handful
+                    }
+                    (n, "green") => {
+                        handful.greens += n.parse::<usize>()?;
+                        handful
+                    }
+                    (n, "blue") => {
+                        handful.blues += n.parse::<usize>()?;
+                        handful
+                    }
+                    _ => Err(parse_error(s, ""))?,
+                },
+            )
         })
     }
 }
 
-fn parse_games(input: &str) -> aoc23::MyResult<Vec<Game>> {
+fn parse_games(input: &str) -> Result<Vec<Game>> {
     input.lines().map(Game::from_str).collect()
 }
