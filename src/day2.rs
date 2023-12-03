@@ -7,9 +7,9 @@ test_with_example!(day2, "../inputs/example2.txt", 8, 2286);
 
 fn day2(input: &str) -> Result<(usize, usize)> {
     const CUBE_LIMITS: Cubes = Cubes {
-        reds: 12,
-        greens: 13,
-        blues: 14,
+        red: 12,
+        green: 13,
+        blue: 14,
     };
     let games: Vec<Game> = collect_lines(input)?;
     let part1 = games
@@ -38,17 +38,17 @@ impl_fromstr_ordered!(
 
 #[derive(Default, Debug)]
 struct Cubes {
-    reds: usize,
-    greens: usize,
-    blues: usize,
+    red: usize,
+    green: usize,
+    blue: usize,
 }
 
 impl_fromstr_matching!(
     delim: ',',
     Cubes {
-        reds: "([0-9]+) red",
-        greens: "([0-9]+) green",
-        blues: "([0-9]+) blue",
+        red: "([0-9]+) red",
+        green: "([0-9]+) green",
+        blue: "([0-9]+) blue",
     }
 );
 
@@ -63,9 +63,9 @@ impl Game {
         self.cubes_sets
             .iter()
             .fold(Cubes::default(), |l, r| Cubes {
-                reds: l.reds.max(r.reds),
-                greens: l.greens.max(r.greens),
-                blues: l.blues.max(r.blues),
+                red: l.red.max(r.red),
+                green: l.green.max(r.green),
+                blue: l.blue.max(r.blue),
             })
             .power()
     }
@@ -73,11 +73,11 @@ impl Game {
 
 impl Cubes {
     fn is_possible(&self, game_limits: &Cubes) -> bool {
-        self.reds <= game_limits.reds
-            && self.greens <= game_limits.greens
-            && self.blues <= game_limits.blues
+        self.red <= game_limits.red
+            && self.green <= game_limits.green
+            && self.blue <= game_limits.blue
     }
     fn power(&self) -> usize {
-        self.reds * self.greens * self.blues
+        self.red * self.green * self.blue
     }
 }
