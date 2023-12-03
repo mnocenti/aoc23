@@ -1,16 +1,13 @@
 use aoc23::*;
-main!(day1_1, day1_2, "../inputs/input1.txt");
 
-test_with_example!(
-    day1_1,
-    "../inputs/example1_1.txt",
-    142,
-    day1_2,
-    "../inputs/example1_2.txt",
-    281
-);
+main!("example1.txt", 142, "example2.txt", 281);
 
-fn day1_1(input: &str) -> Result<u32> {
+fn parse(input: &str) -> Result<&str> {
+    // no parsing do before parts code
+    Ok(input)
+}
+
+fn part1(input: &str) -> Result<u32> {
     let digit_at = |s: &str, i| s.chars().nth(i)?.to_digit(10);
     Ok(input
         .lines()
@@ -22,7 +19,7 @@ fn day1_1(input: &str) -> Result<u32> {
         .sum())
 }
 
-fn day1_2(input: &str) -> Result<usize> {
+fn part2(input: &str) -> Result<usize> {
     Ok(input
         .lines()
         .filter_map(|s| Some(10 * first_digit(s)? + last_digit(s)?))

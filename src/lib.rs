@@ -7,63 +7,61 @@ pub mod grid;
 
 #[macro_export]
 macro_rules! main {
-    ($func:ident, $path:literal) => {
+    () => {
         fn main() -> anyhow::Result<()> {
-            let (part1, part2) = $func(include_str!($path))?;
-            println!("part1: {}", part1);
-            println!("part2: {}", part2);
+            let parsed = parse(include_str!("input.txt"))?;
+            let p1 = part1(&parsed)?;
+            println!("part1: {}", p1);
+            let p2 = part2(&parsed)?;
+            println!("part2: {}", p2);
             Ok(())
         }
     };
-    ($func1:ident, $func2:ident, $path:literal) => {
-        fn main() -> anyhow::Result<()> {
-            let input = include_str!($path);
-            let part1 = $func1(input)?;
-            println!("part1: {}", part1);
-            let part2 = $func2(input)?;
-            println!("part2: {}", part2);
-            Ok(())
-        }
+    ($part1_expected:expr, $part2_expected:expr) => {
+        main!();
+        test_with_example!($part1_expected, $part2_expected);
+    };
+    ($path1:literal, $part1_expected:expr, $path2:literal, $part2_expected:expr) => {
+        main!();
+        test_with_example!($path1, $part1_expected, $path2, $part2_expected);
     };
 }
 
 #[macro_export]
 macro_rules! test_with_example {
-    ($func:ident, $path:literal, $expected:expr) => {
+    ($part1_expected:expr, $part2_expected:expr) => {
         #[cfg(test)]
         mod tests {
             #[test]
-            fn $func() -> anyhow::Result<()> {
-                let res = super::$func(include_str!($path))?;
-                assert_eq!(res, $expected);
+            fn part1() -> anyhow::Result<()> {
+                let parsed = super::parse(include_str!("example.txt"))?;
+                let res = super::part1(&parsed)?;
+                assert_eq!(res, $part1_expected);
+                Ok(())
+            }
+            #[test]
+            fn part2() -> anyhow::Result<()> {
+                let parsed = super::parse(include_str!("example.txt"))?;
+                let res = super::part2(&parsed)?;
+                assert_eq!(res, $part2_expected);
                 Ok(())
             }
         }
     };
-    ($func:ident, $path:literal, $part1_expected:expr, $part2_expected:expr) => {
+    ($path1:literal, $part1_expected:expr, $path2:literal, $part2_expected:expr) => {
         #[cfg(test)]
         mod tests {
             #[test]
-            fn $func() -> anyhow::Result<()> {
-                let (part1, part2) = super::$func(include_str!($path))?;
-                assert_eq!(part1, $part1_expected);
-                assert_eq!(part2, $part2_expected);
-                Ok(())
-            }
-        }
-    };
-    ($func1:ident, $path1:literal, $part1_expected:expr, $func2:ident, $path2:literal, $part2_expected:expr) => {
-        #[cfg(test)]
-        mod tests {
-            #[test]
-            fn $func1() -> anyhow::Result<()> {
-                let part1 = super::$func1(include_str!($path1))?;
+            fn part1() -> anyhow::Result<()> {
+                let parsed = super::parse(include_str!($path1))?;
+                let part1 = super::part1(&parsed)?;
                 assert_eq!(part1, $part1_expected);
                 Ok(())
             }
             #[test]
-            fn $func2() -> anyhow::Result<()> {
-                let part2 = super::$func2(include_str!($path2))?;
+            fn part2() -> anyhow::Result<()> {
+                let parsed = super::parse(include_str!($path2))?;
+                let part2 = super::part2(&parsed)?;
                 assert_eq!(part2, $part2_expected);
                 Ok(())
             }

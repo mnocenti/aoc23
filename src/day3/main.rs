@@ -3,42 +3,33 @@ use std::ops::Range;
 use aoc23::{grid::ByteGrid, *};
 use itertools::Itertools;
 
-main!(day3, "../inputs/input3.txt");
+main!(4361, 467835);
 
-test_with_example!(day3, "../inputs/example3.txt", 4361, 467835);
+type Input<'a> = (ByteGrid<'a>, Vec<Number>);
 
-fn day3(input: &str) -> Result<(usize, usize)> {
+fn parse(input: &str) -> Result<Input> {
     let grid = ByteGrid::from_lines(input);
-    let numbers: Vec<_> = grid
-        .lines()
-        .iter()
-        .enumerate()
-        .flat_map(|(y, line)| {
-            split_numbers_indices(line).map(move |(x0, sub)| -> Result<Number> {
-                let value = sub.parse()?;
-                Ok(Number {
-                    value,
-                    y,
-                    xrange: x0..(x0 + sub.len()),
-                })
-            })
-        })
-        .try_collect()?;
+    let numbers = get_numbers(&grid)?;
+    Ok((grid, numbers))
+}
 
-    let part1 = numbers
+fn part1((grid, numbers): &Input) -> Result<usize> {
+    Ok(numbers
         .iter()
         .filter_map(|n| {
             grid.adjacent_to_range(&n.xrange, n.y)
                 .any(|&c| is_symbol(c))
                 .then_some(n.value)
         })
-        .sum();
+        .sum())
+}
 
+fn part2((grid, numbers): &Input) -> Result<usize> {
     let gears = grid
         .indexed_iter()
         .filter_map(|(coord, &c)| (c == b'*').then_some(coord));
 
-    let part2 = gears
+    Ok(gears
         .filter_map(|coord| -> Option<usize> {
             let adjacent_nums = numbers
                 .iter()
@@ -46,9 +37,18 @@ fn day3(input: &str) -> Result<(usize, usize)> {
                 .collect_vec();
             (adjacent_nums.len() == 2).then_some(adjacent_nums.iter().product())
         })
-        .sum();
+        .sum())
+}
 
-    Ok((part1, part2))
+fn get_numbers(grid: &ByteGrid) -> Result<Vec<Number>> {
+    grid.lines()
+        .iter()
+        .enumerate()
+        .flat_map(|(y, line)| {
+            split_numbers_indices(line)
+                .map(move |(x0, sub)| -> Result<Number> { Number::parse(sub, y, x0) })
+        })
+        .try_collect()
 }
 
 fn addr_of(s: &str) -> usize {
@@ -68,6 +68,14 @@ struct Number {
 }
 
 impl Number {
+    fn parse(sub: &str, y: usize, x0: usize) -> Result<Number> {
+        let value = sub.parse()?;
+        Ok(Number {
+            value,
+            y,
+            xrange: x0..(x0 + sub.len()),
+        })
+    }
     fn is_adjacent(&self, (x, y): (usize, usize)) -> bool {
         self.y.abs_diff(y) <= 1
             && (self.xrange.contains(&(x + 1)) || (x > 0 && self.xrange.contains(&(x - 1))))

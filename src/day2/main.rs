@@ -1,25 +1,26 @@
 use aoc23::*;
 use std::str::FromStr;
 
-main!(day2, "../inputs/input2.txt");
+main!(8, 2286);
 
-test_with_example!(day2, "../inputs/example2.txt", 8, 2286);
+fn parse(input: &str) -> Result<Vec<Game>> {
+    collect_lines(input)
+}
 
-fn day2(input: &str) -> Result<(usize, usize)> {
+fn part1(games: &[Game]) -> Result<usize> {
     const CUBE_LIMITS: Cubes = Cubes {
         red: 12,
         green: 13,
         blue: 14,
     };
-    let games: Vec<Game> = collect_lines(input)?;
-    let part1 = games
+    Ok(games
         .iter()
         .filter_map(|game| game.is_possible(&CUBE_LIMITS).then_some(game.id))
-        .sum();
+        .sum())
+}
 
-    let part2 = games.iter().map(Game::minimal_power).sum();
-
-    Ok((part1, part2))
+fn part2(games: &[Game]) -> Result<usize> {
+    Ok(games.iter().map(Game::minimal_power).sum())
 }
 
 #[derive(Debug, Default)]
