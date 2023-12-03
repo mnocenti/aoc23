@@ -30,10 +30,9 @@ macro_rules! test_with_example {
     ($func:ident, $path:literal, $expected:expr) => {
         #[cfg(test)]
         mod tests {
-            use super::*;
             #[test]
-            fn example() -> anyhow::Result<()> {
-                let res = $func(include_str!($path))?;
+            fn $func() -> anyhow::Result<()> {
+                let res = super::$func(include_str!($path))?;
                 assert_eq!(res, $expected);
                 Ok(())
             }
@@ -42,10 +41,9 @@ macro_rules! test_with_example {
     ($func:ident, $path:literal, $part1_expected:expr, $part2_expected:expr) => {
         #[cfg(test)]
         mod tests {
-            use super::*;
             #[test]
-            fn example() -> anyhow::Result<()> {
-                let (part1, part2) = $func(include_str!($path))?;
+            fn $func() -> anyhow::Result<()> {
+                let (part1, part2) = super::$func(include_str!($path))?;
                 assert_eq!(part1, $part1_expected);
                 assert_eq!(part2, $part2_expected);
                 Ok(())
@@ -55,16 +53,15 @@ macro_rules! test_with_example {
     ($func1:ident, $path1:literal, $part1_expected:expr, $func2:ident, $path2:literal, $part2_expected:expr) => {
         #[cfg(test)]
         mod tests {
-            use super::*;
             #[test]
-            fn example1() -> anyhow::Result<()> {
-                let part1 = $func1(include_str!($path1))?;
+            fn $func1() -> anyhow::Result<()> {
+                let part1 = super::$func1(include_str!($path1))?;
                 assert_eq!(part1, $part1_expected);
                 Ok(())
             }
             #[test]
-            fn example2() -> anyhow::Result<()> {
-                let part2 = $func2(include_str!($path2))?;
+            fn $func2() -> anyhow::Result<()> {
+                let part2 = super::$func2(include_str!($path2))?;
                 assert_eq!(part2, $part2_expected);
                 Ok(())
             }
