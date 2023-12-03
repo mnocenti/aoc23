@@ -1,19 +1,16 @@
 use std::ops::Range;
 
-use aoc23::*;
+use aoc23::{grid::ByteGrid, *};
 use itertools::Itertools;
-use ndarray::Array2;
 
 main!(day3, "../inputs/input3.txt");
 
 test_with_example!(day3, "../inputs/example3.txt", 4361, 467835);
 
 fn day3(input: &str) -> Result<(usize, usize)> {
-    let lines: Vec<&str> = input.lines().collect();
-    let width = lines.len();
-    let height = lines[0].len();
-    let flat: Vec<char> = lines.iter().flat_map(|line| line.chars()).collect();
-    let numbers: Vec<_> = lines
+    let grid = ByteGrid::from_lines(input);
+    let numbers: Vec<_> = grid
+        .lines()
         .iter()
         .enumerate()
         .flat_map(|(y, line)| {
@@ -27,22 +24,25 @@ fn day3(input: &str) -> Result<(usize, usize)> {
             })
         })
         .try_collect()?;
-    let schematic = Array2::from_shape_vec((width, height), flat)?;
 
     let part1 = numbers
         .iter()
-        .filter_map(|n| is_next_to_symbol(&schematic, &n.xrange, n.y).then_some(n.value))
+        .filter_map(|n| {
+            grid.adjacent_to_range(&n.xrange, n.y)
+                .any(|&c| is_symbol(c))
+                .then_some(n.value)
+        })
         .sum();
 
-    let gears = schematic
+    let gears = grid
         .indexed_iter()
-        .filter_map(|((y, x), &c)| (c == '*').then_some((x, y)));
+        .filter_map(|(coord, &c)| (c == b'*').then_some(coord));
 
     let part2 = gears
-        .filter_map(|(x, y)| -> Option<usize> {
+        .filter_map(|coord| -> Option<usize> {
             let adjacent_nums = numbers
                 .iter()
-                .filter_map(|n| n.is_adjacent(x, y).then_some(n.value))
+                .filter_map(|n| n.is_adjacent(coord).then_some(n.value))
                 .collect_vec();
             (adjacent_nums.len() == 2).then_some(adjacent_nums.iter().product())
         })
@@ -68,22 +68,12 @@ struct Number {
 }
 
 impl Number {
-    fn is_adjacent(&self, x: usize, y: usize) -> bool {
+    fn is_adjacent(&self, (x, y): (usize, usize)) -> bool {
         self.y.abs_diff(y) <= 1
             && (self.xrange.contains(&(x + 1)) || (x > 0 && self.xrange.contains(&(x - 1))))
     }
 }
 
-fn is_next_to_symbol(schematic: &Array2<char>, xrange: &Range<usize>, y: usize) -> bool {
-    let x0 = (xrange.start as isize - 1).max(0) as usize;
-    let y0 = (y as isize - 1).max(0) as usize;
-    let xneighbors = x0..((xrange.end + 1).min(schematic.shape()[0]));
-    let yneighbors = y0..((y + 2).min(schematic.shape()[1]));
-    yneighbors
-        .cartesian_product(xneighbors)
-        .any(|coord| is_symbol(schematic[coord]))
-}
-
-fn is_symbol(c: char) -> bool {
-    !c.is_ascii_digit() && c != '.'
+fn is_symbol(c: u8) -> bool {
+    !c.is_ascii_digit() && c != b'.'
 }

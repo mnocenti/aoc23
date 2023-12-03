@@ -3,6 +3,8 @@ use std::str::FromStr;
 pub use anyhow::Result;
 use thiserror::Error;
 
+pub mod grid;
+
 #[macro_export]
 macro_rules! main {
     ($func:ident, $path:literal) => {
