@@ -1,20 +1,62 @@
 use std::str::FromStr;
 
 pub use anyhow::Result;
+use clap::{Parser, ValueEnum};
 use thiserror::Error;
 
 pub mod grid;
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+pub enum Part {
+    Part1,
+    Part2,
+}
+
+#[derive(Parser)]
+#[command(author, version, about, long_about = None)]
+pub struct Args {
+    #[arg(value_enum)]
+    part: Option<Part>,
+}
+
+pub fn get_cli_args() -> Args {
+    Args::parse()
+}
+
+pub fn aoc_main(
+    args: Args,
+    part1: impl Fn() -> Result<()>,
+    part2: impl Fn() -> Result<()>,
+) -> Result<()> {
+    match args.part {
+        Some(Part::Part1) => part1(),
+        Some(Part::Part2) => part2(),
+        None => {
+            part1()?;
+            part2()
+        }
+    }
+}
 
 #[macro_export]
 macro_rules! main {
     () => {
         fn main() -> anyhow::Result<()> {
+            let args = aoc23::get_cli_args();
             let parsed = parse(include_str!("input.txt"))?;
-            let p1 = part1(&parsed)?;
-            println!("part1: {}", p1);
-            let p2 = part2(&parsed)?;
-            println!("part2: {}", p2);
-            Ok(())
+            aoc_main(
+                args,
+                || {
+                    let p1 = part1(&parsed)?;
+                    println!("part1: {}", p1);
+                    Ok(())
+                },
+                || {
+                    let p2 = part2(&parsed)?;
+                    println!("part2: {}", p2);
+                    Ok(())
+                },
+            )
         }
     };
     ($part1_expected:expr, $part2_expected:expr) => {
