@@ -26,33 +26,25 @@ fn part2(cards: &[Card]) -> Result<usize> {
     Ok(cards_counts.iter().sum())
 }
 
+#[apply(parse_ordered!)]
+#[delim(':')]
 #[derive(Debug, Default, Clone)]
 struct Card {
+    #[parse(re("Card +([0-9]+)"))]
     id: usize,
+    #[parse()]
     numbers: Numbers,
 }
 
-impl_fromstr_ordered!(
-    delim: ':',
-    Card {
-        id: "Card +([0-9]+)",
-        numbers : "(.*)",
-    }
-);
-
+#[apply(parse_ordered!)]
+#[delim('|')]
 #[derive(Debug, Default, Clone)]
 struct Numbers {
+    #[parse(collect(' '))]
     winning: HashSet<isize>,
+    #[parse(collect(' '))]
     present: HashSet<isize>,
 }
-
-impl_fromstr_ordered!(
-    delim: '|',
-    Numbers {
-        winning: {collect ' '},
-        present : {collect ' '},
-    }
-);
 
 impl Numbers {
     fn score(&self) -> usize {

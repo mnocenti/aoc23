@@ -23,35 +23,27 @@ fn part2(games: &[Game]) -> Result<usize> {
     Ok(games.iter().map(Game::minimal_power).sum())
 }
 
+#[apply(parse_ordered!)]
+#[delim(':')]
 #[derive(Debug, Default)]
 struct Game {
+    #[parse(re("Game ([0-9]+)"))]
     id: usize,
+    #[parse(collect(';'))]
     cubes_sets: Vec<Cubes>,
 }
 
-impl_fromstr_ordered!(
-    delim: ':',
-    Game {
-        id: "Game ([0-9]+)",
-        cubes_sets : {collect ';'},
-    }
-);
-
+#[apply(parse_matching!)]
+#[delim(',')]
 #[derive(Default, Debug)]
 struct Cubes {
+    #[parse("([0-9]+) red")]
     red: usize,
+    #[parse("([0-9]+) green")]
     green: usize,
+    #[parse("([0-9]+) blue")]
     blue: usize,
 }
-
-impl_fromstr_matching!(
-    delim: ',',
-    Cubes {
-        red: "([0-9]+) red",
-        green: "([0-9]+) green",
-        blue: "([0-9]+) blue",
-    }
-);
 
 impl Game {
     fn is_possible(&self, game_limits: &Cubes) -> bool {

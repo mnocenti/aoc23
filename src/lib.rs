@@ -2,6 +2,7 @@ use std::str::FromStr;
 
 pub use anyhow::Result;
 use clap::{Parser, ValueEnum};
+pub use macro_rules_attribute::apply;
 use thiserror::Error;
 
 pub mod grid;
@@ -132,7 +133,10 @@ pub fn parse_collect<Item, T: FromIterator<Item>>(
 where
     Item: FromStr,
 {
-    s.split(delim).filter(|s| !s.is_empty()).map(|st| st.parse()).collect()
+    s.split(delim)
+        .filter(|s| !s.is_empty())
+        .map(|st| st.parse())
+        .collect()
 }
 
 pub fn collect_lines<Item, T: FromIterator<Item>>(s: &str) -> Result<T, <Item as FromStr>::Err>
@@ -143,47 +147,14 @@ where
 }
 
 #[macro_export]
-macro_rules! set_matching_member {
-    ($t:ident, $s:ident, $member:ident : $regex:literal) => {{
-        static RE: once_cell::sync::Lazy<regex::Regex> =
-            once_cell::sync::Lazy::new(|| regex::Regex::new($regex).unwrap());
-        if let Some(cap) = RE.captures($s) {
-            $t.$member = cap.get(1).unwrap().as_str().parse()?;
-            return Ok($t);
-        }
+macro_rules! set_field_ordered {
+    ($t:ident, $s:ident, $member:ident ()) => {{
+        $t.$member = $s.parse()?;
     }};
-}
-#[macro_export]
-macro_rules! parse_matching {
-    ($string:ident, $delim:literal, $T:ty { $($member:ident : $regex:tt),+ }) => {
-        $string.split($delim).try_fold(<$T>::default(), |mut t, s| {
-            $(
-                set_matching_member!(t, s, $member : $regex);
-            )*
-            #[allow(unreachable_code)]
-            Err(aoc23::parse_error($string, ""))?
-        })
-    };
-}
-#[macro_export]
-macro_rules! impl_fromstr_matching {
-    (delim : $delim:literal, $T:ty { $($member:ident : $regex:tt),+ $(,)?}) => {
-        impl FromStr for $T {
-            type Err = anyhow::Error;
-
-            fn from_str(s: &str) -> Result<Self> {
-                parse_matching!(s, $delim, $T { $($member : $regex),* })
-            }
-        }
-    }
-}
-
-#[macro_export]
-macro_rules! set_member_ordered {
-    ($t:ident, $s:ident, $member:ident : { collect $delim:literal}) => {{
+    ($t:ident, $s:ident, $member:ident (collect($delim:literal))) => {{
         $t.$member = aoc23::parse_collect($s, $delim)?;
     }};
-    ($t:ident, $s:ident, $member:ident : $regex:literal) => {{
+    ($t:ident, $s:ident, $member:ident (re($regex:literal))) => {{
         static RE: once_cell::sync::Lazy<regex::Regex> =
             once_cell::sync::Lazy::new(|| regex::Regex::new($regex).unwrap());
         if let Some(cap) = RE.captures($s) {
@@ -196,30 +167,94 @@ macro_rules! set_member_ordered {
         }
     }};
 }
-#[macro_export]
-macro_rules! parse_ordered {
-    ($string:ident, $delim:literal, $T:ty { $($member:ident : $regex:tt),+ }) => {{
-        let mut t = <$T>::default();
-        let mut split = $string.split($delim);
-        $({
-            let s = split.next().unwrap();
-            set_member_ordered!(t, s, $member : $regex);
-        })*
-        if split.next().is_some() {
-            Err(aoc23::parse_error($string, "too much delimiters"))?
-        }
-        Ok(t)
-    }};
-}
-#[macro_export]
-macro_rules! impl_fromstr_ordered {
-    (delim : $delim:literal, $T:ty { $($member:ident : $regex:tt),+ $(,)?}) => {
-        impl FromStr for $T {
-            type Err = anyhow::Error;
 
-            fn from_str(s: &str) -> Result<Self> {
-                parse_ordered!(s, $delim, $T { $($member : $regex),* })
+#[macro_export]
+macro_rules! parse_ordered {(
+    #[delim($delim:literal)]
+    $(#[$struct_meta:meta])*
+    $struct_vis:vis
+    struct $StructName:ident {
+        $(
+            #[parse $field_parser:tt]
+            $(#[$field_meta:meta])*
+            $field_vis:vis // this visibility will be applied to the getters instead
+            $field_name:ident : $field_ty:ty
+        ),* $(,)?
+    }
+) => (
+    // First, generate the struct definition we have been given
+    $(#[$struct_meta])*
+    $struct_vis
+    struct $StructName {
+        $(
+            $(#[$field_meta])*
+            $field_vis $field_name: $field_ty,
+        )*
+    }
+    impl FromStr for $StructName {
+        type Err = anyhow::Error;
+
+        fn from_str(string: &str) -> Result<Self> {
+            let mut t = <$StructName>::default();
+            let mut split = string.split($delim);
+            $({
+                let s = split.next().unwrap();
+                set_field_ordered!(t, s, $field_name $field_parser);
+            })*
+            if split.next().is_some() {
+                Err(aoc23::parse_error(string, "too much delimiters"))?
             }
+            Ok(t)
         }
     }
+)}
+
+#[macro_export]
+macro_rules! set_matching_field {
+    ($t:ident, $s:ident, $member:ident ($regex:literal)) => {{
+        static RE: once_cell::sync::Lazy<regex::Regex> =
+            once_cell::sync::Lazy::new(|| regex::Regex::new($regex).unwrap());
+        if let Some(cap) = RE.captures($s) {
+            $t.$member = cap.get(1).unwrap().as_str().parse()?;
+            return Ok($t);
+        }
+    }};
 }
+
+#[macro_export]
+macro_rules! parse_matching {(
+    #[delim($delim:literal)]
+    $(#[$struct_meta:meta])*
+    $struct_vis:vis
+    struct $StructName:ident {
+        $(
+            #[parse $field_parser:tt]
+            $(#[$field_meta:meta])*
+            $field_vis:vis // this visibility will be applied to the getters instead
+            $field_name:ident : $field_ty:ty
+        ),* $(,)?
+    }
+) => (
+    // First, generate the struct definition we have been given
+    $(#[$struct_meta])*
+    $struct_vis
+    struct $StructName {
+        $(
+            $(#[$field_meta])*
+            $field_vis $field_name: $field_ty,
+        )*
+    }
+    impl FromStr for $StructName {
+        type Err = anyhow::Error;
+
+        fn from_str(string: &str) -> Result<Self> {
+            string.split($delim).try_fold(<$StructName>::default(), |mut t, s| {
+                $(
+                    set_matching_field!(t, s, $field_name $field_parser);
+                )*
+                #[allow(unreachable_code)]
+                Err(aoc23::parse_error(string, ""))?
+            })
+        }
+    }
+)}
