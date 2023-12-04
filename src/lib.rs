@@ -177,12 +177,12 @@ macro_rules! parse_ordered {(
         $(
             #[parse $field_parser:tt]
             $(#[$field_meta:meta])*
-            $field_vis:vis // this visibility will be applied to the getters instead
+            $field_vis:vis
             $field_name:ident : $field_ty:ty
         ),* $(,)?
     }
 ) => (
-    // First, generate the struct definition we have been given
+    // Generate the struct definition we have been given
     $(#[$struct_meta])*
     $struct_vis
     struct $StructName {
@@ -191,6 +191,7 @@ macro_rules! parse_ordered {(
             $field_vis $field_name: $field_ty,
         )*
     }
+    // Generate an implementation of FromStr
     impl FromStr for $StructName {
         type Err = anyhow::Error;
 
@@ -198,7 +199,7 @@ macro_rules! parse_ordered {(
             let mut t = <$StructName>::default();
             let mut split = string.split($delim);
             $({
-                let s = split.next().unwrap();
+                let s = split.next().expect("not enough delimiters");
                 set_field_ordered!(t, s, $field_name $field_parser);
             })*
             if split.next().is_some() {
