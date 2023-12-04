@@ -132,7 +132,7 @@ pub fn parse_collect<Item, T: FromIterator<Item>>(
 where
     Item: FromStr,
 {
-    s.split(delim).map(|st| st.parse()).collect()
+    s.split(delim).filter(|s| !s.is_empty()).map(|st| st.parse()).collect()
 }
 
 pub fn collect_lines<Item, T: FromIterator<Item>>(s: &str) -> Result<T, <Item as FromStr>::Err>
