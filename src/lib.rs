@@ -139,6 +139,19 @@ where
         .collect()
 }
 
+pub fn parse_collect_str<Item, T: FromIterator<Item>>(
+    s: &str,
+    delim: &str,
+) -> Result<T, <Item as FromStr>::Err>
+where
+    Item: FromStr,
+{
+    s.split(delim)
+        .filter(|s| !s.is_empty())
+        .map(|st| st.parse())
+        .collect()
+}
+
 pub fn collect_lines<Item, T: FromIterator<Item>>(s: &str) -> Result<T, <Item as FromStr>::Err>
 where
     Item: FromStr,
@@ -148,20 +161,26 @@ where
 
 #[macro_export]
 macro_rules! set_field_ordered {
-    ($t:ident, $s:ident, $member:ident ()) => {{
-        $t.$member = $s.parse()?;
+    ($t:ident, $split:ident, $member:ident ()) => {{
+        let s = $split.next().expect("not enough delimiters");
+        $t.$member = s.parse()?;
     }};
-    ($t:ident, $s:ident, $member:ident (collect($delim:literal))) => {{
-        $t.$member = aoc23::parse_collect($s, $delim)?;
+    ($t:ident, $split:ident, $member:ident (collect(remaining))) => {{
+        $t.$member = $split.map(|s| s.parse()).try_collect()?;
     }};
-    ($t:ident, $s:ident, $member:ident (re($regex:literal))) => {{
+    ($t:ident, $split:ident, $member:ident (collect($delim:literal))) => {{
+        let s = $split.next().expect("not enough delimiters");
+        $t.$member = aoc23::parse_collect(s, $delim)?;
+    }};
+    ($t:ident, $split:ident, $member:ident (re($regex:literal))) => {{
+        let s = $split.next().expect("not enough delimiters");
         static RE: once_cell::sync::Lazy<regex::Regex> =
             once_cell::sync::Lazy::new(|| regex::Regex::new($regex).unwrap());
-        if let Some(cap) = RE.captures($s) {
+        if let Some(cap) = RE.captures(s) {
             $t.$member = cap.get(1).unwrap().as_str().parse()?;
         } else {
             return Err(aoc23::parse_error(
-                $s,
+                s,
                 &format!("failed to match regex {}", $regex),
             ))?;
         }
@@ -170,7 +189,7 @@ macro_rules! set_field_ordered {
 
 #[macro_export]
 macro_rules! parse_ordered {(
-    #[delim($delim:literal)]
+    #[delim($delim:expr)]
     $(#[$struct_meta:meta])*
     $struct_vis:vis
     struct $StructName:ident {
@@ -199,12 +218,8 @@ macro_rules! parse_ordered {(
             let mut t = <$StructName>::default();
             let mut split = string.split($delim);
             $({
-                let s = split.next().expect("not enough delimiters");
-                set_field_ordered!(t, s, $field_name $field_parser);
+                set_field_ordered!(t, split, $field_name $field_parser);
             })*
-            if split.next().is_some() {
-                Err(aoc23::parse_error(string, "too much delimiters"))?
-            }
             Ok(t)
         }
     }
