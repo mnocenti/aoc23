@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{fmt::Display, str::FromStr, time::Duration};
 
 pub use anyhow::Result;
 use clap::{Parser, ValueEnum};
@@ -17,26 +17,36 @@ pub enum Part {
 #[command(author, version, about, long_about = None)]
 pub struct Args {
     #[arg(value_enum)]
-    part: Option<Part>,
+    pub part: Option<Part>,
 }
 
 pub fn get_cli_args() -> Args {
     Args::parse()
 }
 
-pub fn aoc_main(
-    args: Args,
-    part1: impl Fn() -> Result<()>,
-    part2: impl Fn() -> Result<()>,
+pub fn print_results(
+    t_parse: Duration,
+    p1: Option<Result<impl Display>>,
+    t1: Option<Duration>,
+    p2: Option<Result<impl Display>>,
+    t2: Option<Duration>,
 ) -> Result<()> {
-    match args.part {
-        Some(Part::Part1) => part1(),
-        Some(Part::Part2) => part2(),
-        None => {
-            part1()?;
-            part2()
-        }
+    println!("\nResults:");
+    if let Some(r) = p1 {
+        println!("    part1: {}", r?);
     }
+    if let Some(r) = p2 {
+        println!("    part2: {}", r?);
+    }
+    println!("\nTimings:");
+    println!("    parse: {:?}", t_parse);
+    if let Some(t) = t1 {
+        println!("    part1: {:?}", t);
+    }
+    if let Some(t) = t2 {
+        println!("    part2: {:?}", t);
+    }
+    Ok(())
 }
 
 #[macro_export]
@@ -44,20 +54,29 @@ macro_rules! main {
     () => {
         fn main() -> anyhow::Result<()> {
             let args = aoc23::get_cli_args();
+            let parse_start = std::time::Instant::now();
             let parsed = parse(include_str!("input.txt"))?;
-            aoc_main(
-                args,
-                || {
-                    let p1 = part1(&parsed)?;
-                    println!("part1: {}", p1);
-                    Ok(())
-                },
-                || {
-                    let p2 = part2(&parsed)?;
-                    println!("part2: {}", p2);
-                    Ok(())
-                },
-            )
+            let t_parse = parse_start.elapsed();
+            let mut t1 = None;
+            let mut t2 = None;
+            let mut p1 = || {
+                let now = std::time::Instant::now();
+                let p1_res = part1(&parsed);
+                t1 = Some(now.elapsed());
+                p1_res
+            };
+            let mut p2 = || {
+                let now = std::time::Instant::now();
+                let p2_res = part2(&parsed);
+                t2 = Some(now.elapsed());
+                p2_res
+            };
+            let (mut p1_res, mut p2_res) = match args.part {
+                Some(Part::Part1) => (Some(p1()), None),
+                Some(Part::Part2) => (None, Some(p2())),
+                None => (Some(p1()), Some(p2())),
+            };
+            aoc23::print_results(t_parse, p1_res, t1, p2_res, t2)
         }
     };
     ($part1_expected:expr, $part2_expected:expr) => {
