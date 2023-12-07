@@ -1,8 +1,9 @@
-use std::{fmt::Display, str::FromStr, time::Duration};
+use std::{fmt::Display, time::Duration};
 
 pub use anyhow::Result;
 use clap::{Parser, ValueEnum};
 pub use macro_rules_attribute::apply;
+pub use std::str::FromStr;
 use thiserror::Error;
 
 pub mod grid;
