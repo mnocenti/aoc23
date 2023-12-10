@@ -5,7 +5,7 @@ use itertools::Itertools;
 
 main!(4361, 467835);
 
-type Input<'a> = (ByteGrid<'a>, Vec<Number>);
+type Input = (ByteGrid, Vec<Number>);
 
 fn parse(input: &str) -> Result<Input> {
     let grid = ByteGrid::from_lines(input);
@@ -51,12 +51,12 @@ fn get_numbers(grid: &ByteGrid) -> Result<Vec<Number>> {
         .try_collect()
 }
 
-fn addr_of(s: &str) -> usize {
+fn addr_of(s: &[u8]) -> usize {
     s.as_ptr() as usize
 }
 
-fn split_numbers_indices(s: &str) -> impl Iterator<Item = (usize, &str)> {
-    s.split(|c: char| !c.is_ascii_digit())
+fn split_numbers_indices(s: &[u8]) -> impl Iterator<Item = (usize, &[u8])> {
+    s.split(|c: &u8| !c.is_ascii_digit())
         .filter_map(move |sub| (!sub.is_empty()).then_some((addr_of(sub) - addr_of(s), sub)))
 }
 
@@ -68,8 +68,8 @@ struct Number {
 }
 
 impl Number {
-    fn parse(sub: &str, y: usize, x0: usize) -> Result<Number> {
-        let value = sub.parse()?;
+    fn parse(sub: &[u8], y: usize, x0: usize) -> Result<Number> {
+        let value = std::str::from_utf8(sub)?.parse()?;
         Ok(Number {
             value,
             y,

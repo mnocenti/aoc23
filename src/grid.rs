@@ -1,31 +1,61 @@
 use itertools::Itertools;
-use std::ops::{Index, Range};
+use std::ops::{Index, IndexMut, Range};
 
-pub struct ByteGrid<'a> {
-    lines: Vec<&'a str>,
+#[derive(Debug, Clone)]
+pub struct Grid<Item> {
+    pub lines: Vec<Vec<Item>>,
     pub width: usize,
     pub height: usize,
 }
 
-type Coord = (usize, usize);
+pub type ByteGrid = Grid<u8>;
 
-impl<'a> ByteGrid<'a> {
-    pub fn from_lines(input: &'a str) -> ByteGrid<'a> {
-        let lines: Vec<&'a str> = input.lines().collect();
+pub type Coord = (usize, usize);
+
+impl<Item> Grid<Item> {
+    pub fn lines(&self) -> &Vec<Vec<Item>> {
+        &self.lines
+    }
+
+    pub fn from_lines_mapped(input: &str, f: &impl Fn(u8) -> Item) -> Grid<Item> {
+        let lines = input
+            .lines()
+            .map(|l| l.as_bytes().iter().copied().map(f).collect_vec())
+            .collect_vec();
         let width = lines[0].len();
         let height = lines.len();
-        ByteGrid {
+        Grid {
             lines,
             width,
             height,
         }
     }
 
-    pub fn lines(&self) -> &Vec<&'a str> {
-        &self.lines
+    pub fn mapped<MappedItem>(&self, f: impl Fn(&Item) -> MappedItem) -> Grid<MappedItem> {
+        Grid::<MappedItem> {
+            lines: self
+                .lines
+                .iter()
+                .map(|l| l.iter().map(&f).collect_vec())
+                .collect_vec(),
+            width: self.width,
+            height: self.height,
+        }
     }
 
-    pub fn adjacent_to(&'a self, (x, y): Coord) -> impl Iterator<Item = &'a u8> {
+    pub fn into_mapped<MappedItem>(self, f: impl Fn(Item) -> MappedItem) -> Grid<MappedItem> {
+        Grid::<MappedItem> {
+            lines: self
+                .lines
+                .into_iter()
+                .map(|l| l.into_iter().map(&f).collect_vec())
+                .collect_vec(),
+            width: self.width,
+            height: self.height,
+        }
+    }
+
+    pub fn adjacent_to(&self, (x, y): Coord) -> impl Iterator<Item = &Item> {
         let x0 = (x as isize - 1).max(0) as usize;
         let y0 = (y as isize - 1).max(0) as usize;
         let xneighbors = x0..((x + 2).min(self.width));
@@ -36,10 +66,10 @@ impl<'a> ByteGrid<'a> {
     }
 
     pub fn adjacent_to_range(
-        &'a self,
+        &self,
         xrange: &Range<usize>,
         y: usize,
-    ) -> impl Iterator<Item = &'a u8> {
+    ) -> impl Iterator<Item = &Item> {
         let xrange = xrange.clone();
         let x0 = (xrange.start as isize - 1).max(0) as usize;
         let y0 = (y as isize - 1).max(0) as usize;
@@ -52,20 +82,95 @@ impl<'a> ByteGrid<'a> {
             })
     }
 
-    pub fn indexed_iter(&'a self) -> impl Iterator<Item = (Coord, &'a u8)> {
-        self.lines.iter().enumerate().flat_map(|(y, line)| {
-            line.as_bytes()
-                .iter()
-                .enumerate()
-                .map(move |(x, c)| ((x, y), c))
-        })
+    pub fn indexed_iter(&self) -> impl Iterator<Item = (Coord, &Item)> {
+        self.lines
+            .iter()
+            .enumerate()
+            .flat_map(|(y, line)| line.iter().enumerate().map(move |(x, c)| ((x, y), c)))
+    }
+
+    /// Returns the values of the tiles in (up, down, left, right) directions
+    pub fn get_cardinally_adjacent_tiles(
+        &self,
+        coord: Coord,
+    ) -> (Option<&Item>, Option<&Item>, Option<&Item>, Option<&Item>) {
+        (
+            self.get_above(coord),
+            self.get_below(coord),
+            self.get_left_of(coord),
+            self.get_right_of(coord),
+        )
+    }
+
+    pub fn get_above(&self, (x, y): Coord) -> Option<&Item> {
+        self.get((x, y.wrapping_sub(1)))
+    }
+    pub fn get_below(&self, (x, y): Coord) -> Option<&Item> {
+        self.get((x, y + 1))
+    }
+    pub fn get_left_of(&self, (x, y): Coord) -> Option<&Item> {
+        self.get((x.wrapping_sub(1), y))
+    }
+    pub fn get_right_of(&self, (x, y): Coord) -> Option<&Item> {
+        self.get((x + 1, y))
+    }
+
+    pub fn get_above_coord(&self, (x, y): Coord) -> Option<(Coord, &Item)> {
+        self.get_with_coord((x, y.wrapping_sub(1)))
+    }
+    pub fn get_below_coord(&self, (x, y): Coord) -> Option<(Coord, &Item)> {
+        self.get_with_coord((x, y + 1))
+    }
+    pub fn get_left_coord(&self, (x, y): Coord) -> Option<(Coord, &Item)> {
+        self.get_with_coord((x.wrapping_sub(1), y))
+    }
+    pub fn get_right_coord(&self, (x, y): Coord) -> Option<(Coord, &Item)> {
+        self.get_with_coord((x + 1, y))
+    }
+
+    pub fn get(&self, (x, y): Coord) -> Option<&Item> {
+        if x >= self.width || y >= self.height {
+            None
+        } else {
+            Some(&self[(x, y)])
+        }
+    }
+
+    pub fn get_with_coord(&self, (x, y): Coord) -> Option<(Coord, &Item)> {
+        if x >= self.width || y >= self.height {
+            None
+        } else {
+            Some(((x, y), &self[(x, y)]))
+        }
     }
 }
 
-impl<'a> Index<Coord> for ByteGrid<'a> {
-    type Output = u8;
+impl<Item> Index<Coord> for Grid<Item> {
+    type Output = Item;
 
     fn index(&self, (x, y): Coord) -> &Self::Output {
-        &self.lines()[y].as_bytes()[x]
+        &self.lines[y][x]
+    }
+}
+
+impl<Item> IndexMut<Coord> for Grid<Item> {
+    fn index_mut(&mut self, (x, y): Coord) -> &mut Self::Output {
+        &mut self.lines[y][x]
+    }
+}
+
+impl ByteGrid {
+    pub fn from_lines(input: &str) -> ByteGrid {
+        let lines = input
+            .lines()
+            .map(|l| l.as_bytes().iter().copied().collect_vec())
+            .collect_vec();
+        let width = lines[0].len();
+        let height = lines.len();
+        ByteGrid {
+            lines,
+            width,
+            height,
+        }
     }
 }
