@@ -61,3 +61,7 @@ path = "src/day10/main.rs"
 [[bin]]
 name = "day10_visu"
 path = "src/day10/with_visuals.rs"
+
+[[bin]]
+name = "day11"
+path = "src/day11/main.rs"

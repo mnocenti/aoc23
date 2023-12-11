@@ -17,10 +17,18 @@ impl<Item> Grid<Item> {
         &self.lines
     }
 
-    pub fn from_lines_mapped(input: &str, f: &impl Fn(u8) -> Item) -> Grid<Item> {
+    pub fn column(&self, x: usize) -> impl Iterator<Item = &Item> {
+        (0..self.height).map(move |y| &self.lines[y][x])
+    }
+
+    pub fn columns(&self) -> impl Iterator<Item = impl Iterator<Item = &Item>> {
+        (0..self.width).map(|x| self.column(x))
+    }
+
+    pub fn from_lines_mapped(input: &str, f: impl Fn(u8) -> Item) -> Grid<Item> {
         let lines = input
             .lines()
-            .map(|l| l.as_bytes().iter().copied().map(f).collect_vec())
+            .map(|l| l.as_bytes().iter().copied().map(&f).collect_vec())
             .collect_vec();
         let width = lines[0].len();
         let height = lines.len();
@@ -53,6 +61,20 @@ impl<Item> Grid<Item> {
             width: self.width,
             height: self.height,
         }
+    }
+
+    pub fn insert_line(&mut self, y: usize, line: Vec<Item>) {
+        assert!(line.len() == self.width);
+        self.lines.insert(y, line);
+        self.height += 1;
+    }
+
+    pub fn insert_column(&mut self, x: usize, column: Vec<Item>) {
+        assert!(column.len() == self.height);
+        for (y, item) in column.into_iter().enumerate() {
+            self.lines[y].insert(x, item);
+        }
+        self.width += 1;
     }
 
     pub fn adjacent_to(&self, (x, y): Coord) -> impl Iterator<Item = &Item> {
