@@ -18,7 +18,8 @@ fn part1(_maze: &Input) -> Result<usize> {
     Ok(0)
 }
 
-const TILE_SIZE: usize = 6;
+const TILE_SIZE: usize = 3;
+const PIXEL_SIZE: usize = 2;
 
 fn part2(maze: &Input) -> Result<usize> {
     let start_pos = maze
@@ -42,61 +43,66 @@ fn part2(maze: &Input) -> Result<usize> {
     let mut status = InOutStatus::Outside;
     let mut in_main_loop = false;
     let mut from_below = false;
-    let w = maze.width * TILE_SIZE;
-    let h = maze.height * TILE_SIZE;
+    let w = maze.width * TILE_SIZE * PIXEL_SIZE;
+    let h = maze.height * TILE_SIZE * PIXEL_SIZE;
     let canvas = Canvas::new(w, h).title("Day 10").state(()).show_ms(true);
     canvas.render(move |(), image| {
         if count == 0 {
             draw(&maze, image);
         }
         count += 1;
+        if !current_pipes.is_empty() {
+            for _ in 0..15 {
+                if !current_pipes.is_empty() {
+                    let next_pipes = current_pipes
+                        .iter()
+                        .flat_map(|coord| {
+                            get_neighboring_pipes(
+                                *coord,
+                                &maze,
+                                |tile| tile.tile,
+                                |tile| tile.status != InOutStatus::MainLoop,
+                            )
+                        })
+                        .collect_vec();
+                    current_pipes.iter().for_each(|coord| {
+                        maze[*coord].status = InOutStatus::MainLoop;
+                        draw_tile_at(*coord, &maze[*coord], image);
+                    });
 
-        for _ in 0..10 {
-            if !current_pipes.is_empty() {
-                let next_pipes = current_pipes
-                    .iter()
-                    .flat_map(|coord| {
-                        get_neighboring_pipes(
-                            *coord,
-                            &maze,
-                            |tile| tile.tile,
-                            |tile| tile.status != InOutStatus::MainLoop,
-                        )
-                    })
-                    .collect_vec();
-                current_pipes.iter().for_each(|coord| {
-                    maze[*coord].status = InOutStatus::MainLoop;
-                    draw_tile_at(*coord, &maze[*coord], image);
-                });
-
-                current_pipes = next_pipes;
-            } else if scan_coord.1 < maze.height {
-                let tile = &mut maze[scan_coord];
-                if tile.status == InOutStatus::MainLoop {
-                    if !in_main_loop && !connects_left(&tile.tile) {
-                        in_main_loop = connects_right(&tile.tile);
-                        if in_main_loop {
-                            from_below = connects_down(&tile.tile);
-                        } else {
-                            status = status.flipped();
-                        }
-                    } else if in_main_loop && !connects_right(&tile.tile) {
-                        in_main_loop = false;
-                        if from_below != connects_down(&tile.tile) {
-                            status = status.flipped();
-                        }
-                    }
-                } else {
-                    tile.status = status;
+                    current_pipes = next_pipes;
                 }
-                draw_tile_at(scan_coord, &maze[scan_coord], image);
-                scan_coord.0 += 1;
-                if scan_coord.0 >= maze.width {
-                    scan_coord.0 = 0;
-                    scan_coord.1 += 1;
-                    status = InOutStatus::Outside;
-                    in_main_loop = false;
-                    from_below = false;
+            }
+        } else if scan_coord.1 < maze.height {
+            for _ in 0..30 {
+                if scan_coord.1 < maze.height {
+                    let tile = &mut maze[scan_coord];
+                    if tile.status == InOutStatus::MainLoop {
+                        if !in_main_loop && !connects_left(&tile.tile) {
+                            in_main_loop = connects_right(&tile.tile);
+                            if in_main_loop {
+                                from_below = connects_down(&tile.tile);
+                            } else {
+                                status = status.flipped();
+                            }
+                        } else if in_main_loop && !connects_right(&tile.tile) {
+                            in_main_loop = false;
+                            if from_below != connects_down(&tile.tile) {
+                                status = status.flipped();
+                            }
+                        }
+                    } else {
+                        tile.status = status;
+                    }
+                    draw_tile_at(scan_coord, &maze[scan_coord], image);
+                    scan_coord.0 += 1;
+                    if scan_coord.0 >= maze.width {
+                        scan_coord.0 = 0;
+                        scan_coord.1 += 1;
+                        status = InOutStatus::Outside;
+                        in_main_loop = false;
+                        from_below = false;
+                    }
                 }
             }
         }
@@ -113,12 +119,14 @@ fn draw(maze: &Grid<Tile>, image: &mut Image) {
 fn draw_tile_at((x0, y0): Coord, tile: &Tile, image: &mut Image) {
     let color = tile.status.get_color();
     let height = image.height();
-    let (x0, y0) = (x0 * TILE_SIZE, y0 * TILE_SIZE);
+    let (x0, y0) = (x0 * TILE_SIZE * PIXEL_SIZE, y0 * TILE_SIZE * PIXEL_SIZE);
     let mut draw = |x: usize, y: usize| {
-        image[RC(height - y0 - 2 * y - 1, x0 + 2 * x)] = color;
-        image[RC(height - y0 - 2 * y - 1, x0 + 2 * x + 1)] = color;
-        image[RC(height - y0 - 2 * y - 2, x0 + 2 * x)] = color;
-        image[RC(height - y0 - 2 * y - 2, x0 + 2 * x + 1)] = color;
+        for (px, py) in (0..PIXEL_SIZE).cartesian_product(0..PIXEL_SIZE) {
+            image[RC(
+                height - y0 - PIXEL_SIZE * y - 1 - py,
+                x0 + PIXEL_SIZE * x + px,
+            )] = color;
+        }
     };
     match tile.tile {
         b'|' => {
