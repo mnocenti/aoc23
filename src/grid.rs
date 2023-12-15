@@ -140,7 +140,7 @@ impl<Item> Grid<Item> {
         self.lines.iter().flat_map(|line| line.iter())
     }
 
-    pub fn indexed_iter(&self) -> impl Iterator<Item = (Coord, &Item)> {
+    pub fn indexed_iter(&self) -> impl DoubleEndedIterator<Item = (Coord, &Item)> {
         self.lines
             .iter()
             .enumerate()

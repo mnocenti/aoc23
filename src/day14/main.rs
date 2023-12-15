@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::Display, mem::swap};
+use std::{collections::HashMap, fmt::Display};
 
 use aoc23::{
     grid::{Coord, Grid},
@@ -22,23 +22,21 @@ fn parse(input: &str) -> Result<Rocks> {
 }
 
 fn part1(rocks: &Rocks) -> Result<usize> {
-    let mut tilted_north = rocks.clone();
-    tilt(rocks, &mut tilted_north, Dir::North);
-    Ok(tilted_north
+    let mut rocks = rocks.clone();
+    tilt(&mut rocks, Dir::North);
+    Ok(rocks
         .indexed_iter()
-        .map(|(coord, _)| north_load(&tilted_north, coord))
+        .map(|(coord, _)| north_load(&rocks, coord))
         .sum())
 }
 
 fn part2(rocks: &Rocks) -> Result<usize> {
     let mut rocks = rocks.clone();
-    let mut previous = rocks.clone();
     let mut history = HashMap::new();
 
     let mut n = 0;
     while history.entry(uuid(&rocks)).or_insert(n) == &n {
-        swap(&mut previous, &mut rocks);
-        spin_cycle(&mut previous, &mut rocks);
+        spin_cycle(&mut rocks);
         n += 1;
     }
 
@@ -49,8 +47,7 @@ fn part2(rocks: &Rocks) -> Result<usize> {
     let pos_in_loop = (1000000000 - loop_start) % (loop_end - loop_start);
 
     for _ in 0..pos_in_loop {
-        swap(&mut previous, &mut rocks);
-        spin_cycle(&mut previous, &mut rocks);
+        spin_cycle(&mut rocks);
     }
 
     Ok(rocks
@@ -85,22 +82,29 @@ enum Dir {
     East,
 }
 
-fn spin_cycle(from: &mut Rocks, to: &mut Rocks) {
-    tilt(from, to, Dir::North);
-    tilt(to, from, Dir::West);
-    tilt(from, to, Dir::South);
-    tilt(to, from, Dir::East);
-    swap(from, to);
+fn spin_cycle(rocks: &mut Rocks) {
+    tilt(rocks, Dir::North);
+    tilt(rocks, Dir::West);
+    tilt(rocks, Dir::South);
+    tilt(rocks, Dir::East);
 }
 
-fn tilt(from: &Rocks, to: &mut Rocks, dir: Dir) {
-    remove_round_rocks(to);
-    let round_rock_coords = from
-        .indexed_iter()
-        .filter_map(|(coord, rock)| (*rock == Rock::Round).then_some(coord));
+fn tilt(rocks: &mut Rocks, dir: Dir) {
+    let round_rock_coords: Vec<_> = match dir {
+        Dir::North | Dir::West => rocks
+            .indexed_iter()
+            .filter_map(|(coord, rock)| (*rock == Rock::Round).then_some(coord))
+            .collect(),
+        Dir::South | Dir::East => rocks
+            .indexed_iter()
+            .rev()
+            .filter_map(|(coord, rock)| (*rock == Rock::Round).then_some(coord))
+            .collect(),
+    };
     for coord in round_rock_coords {
-        let dest = roll(from, coord, dir);
-        to[dest] = Rock::Round;
+        let dest = roll(rocks, coord, dir);
+        rocks[coord] = Rock::Empty;
+        rocks[dest] = Rock::Round;
     }
 }
 
@@ -132,16 +136,6 @@ fn roll(rocks: &Rocks, coord: Coord, dir: Dir) -> Coord {
 
 fn add(a: (isize, isize), b: (isize, isize)) -> (isize, isize) {
     (a.0 + b.0, a.1 + b.1)
-}
-
-fn remove_round_rocks(rocks: &mut Rocks) {
-    for l in rocks.lines.iter_mut() {
-        for rock in l.iter_mut() {
-            if *rock == Rock::Round {
-                *rock = Rock::Empty;
-            }
-        }
-    }
 }
 
 fn uuid(rocks: &Rocks) -> Vec<usize> {
