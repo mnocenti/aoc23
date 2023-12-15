@@ -13,8 +13,12 @@ pub type ByteGrid = Grid<u8>;
 pub type Coord = (usize, usize);
 
 impl<Item> Grid<Item> {
-    pub fn lines(&self) -> &Vec<Vec<Item>> {
-        &self.lines
+    pub fn row(&self, y: usize) -> impl Iterator<Item = &Item> {
+        self.lines[y].iter()
+    }
+
+    pub fn rows(&self) -> impl Iterator<Item = impl Iterator<Item = &Item>> {
+        (0..self.height).map(|y| self.row(y))
     }
 
     pub fn column(&self, x: usize) -> impl Iterator<Item = &Item> {

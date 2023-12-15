@@ -41,7 +41,7 @@ fn part2((grid, numbers): &Input) -> Result<usize> {
 }
 
 fn get_numbers(grid: &ByteGrid) -> Result<Vec<Number>> {
-    grid.lines()
+    grid.lines
         .iter()
         .enumerate()
         .flat_map(|(y, line)| {

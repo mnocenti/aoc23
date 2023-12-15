@@ -150,7 +150,7 @@ fn part2(maze: &Input) -> Result<usize> {
     color_inside_outside(&mut maze);
     println!("{}", MazeDisplayer(&maze));
     Ok(maze
-        .lines()
+        .lines
         .iter()
         .map(|l| {
             l.iter()
