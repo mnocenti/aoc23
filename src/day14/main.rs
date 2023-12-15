@@ -33,18 +33,16 @@ fn part1(rocks: &Rocks) -> Result<usize> {
 fn part2(rocks: &Rocks) -> Result<usize> {
     let mut rocks = rocks.clone();
     let mut previous = rocks.clone();
-
     let mut history = HashMap::new();
 
     let mut n = 0;
-    while !history.contains_key(&rocks) {
-        history.insert(rocks.clone(), n);
+    while history.entry(uuid(&rocks)).or_insert(n) == &n {
         swap(&mut previous, &mut rocks);
         spin_cycle(&mut previous, &mut rocks);
         n += 1;
     }
 
-    let loop_start = history.get(&rocks).unwrap();
+    let loop_start = history.get(&uuid(&rocks)).unwrap();
     let loop_end = n;
     println!("Found loop from {loop_start} to {loop_end}");
 
@@ -144,6 +142,25 @@ fn remove_round_rocks(rocks: &mut Rocks) {
             }
         }
     }
+}
+
+fn uuid(rocks: &Rocks) -> Vec<usize> {
+    rocks
+        .iter()
+        .fold((Vec::new(), 0), |(mut acc, n), rock| {
+            if n % 30 == 0 {
+                acc.push(0);
+            }
+            let val = acc.last_mut().unwrap();
+            let rock_val = match *rock {
+                Rock::Empty => 0,
+                Rock::Square => 1,
+                Rock::Round => 2,
+            };
+            *val = *val * 3 + rock_val;
+            (acc, n + 1)
+        })
+        .0
 }
 
 struct RockDisplay<'a>(&'a Rocks);

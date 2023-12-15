@@ -136,6 +136,10 @@ impl<Item> Grid<Item> {
             })
     }
 
+    pub fn iter(&self) -> impl Iterator<Item = &Item> {
+        self.lines.iter().flat_map(|line| line.iter())
+    }
+
     pub fn indexed_iter(&self) -> impl Iterator<Item = (Coord, &Item)> {
         self.lines
             .iter()
