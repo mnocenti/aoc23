@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use std::ops::{Index, IndexMut, Range};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Grid<Item> {
     pub lines: Vec<Vec<Item>>,
     pub width: usize,
@@ -12,20 +12,48 @@ pub type ByteGrid = Grid<u8>;
 
 pub type Coord = (usize, usize);
 
+impl<Item> Grid<Item>
+where
+    Item: From<u8>,
+{
+    pub fn from_lines(input: &str) -> Self {
+        let lines = input
+            .lines()
+            .filter(|l| !l.is_empty())
+            .map(|l| l.as_bytes().iter().map(|c| (*c).into()).collect_vec())
+            .collect_vec();
+        let width = lines[0].len();
+        let height = lines.len();
+        Self {
+            lines,
+            width,
+            height,
+        }
+    }
+}
+
 impl<Item> Grid<Item> {
-    pub fn row(&self, y: usize) -> impl Iterator<Item = &Item> {
+    pub fn row(
+        &self,
+        y: usize,
+    ) -> impl DoubleEndedIterator<Item = &Item> + ExactSizeIterator<Item = &Item> {
         self.lines[y].iter()
     }
 
-    pub fn rows(&self) -> impl Iterator<Item = impl Iterator<Item = &Item>> {
+    pub fn rows(&self) -> impl DoubleEndedIterator<Item = impl DoubleEndedIterator<Item = &Item>> {
         (0..self.height).map(|y| self.row(y))
     }
 
-    pub fn column(&self, x: usize) -> impl Iterator<Item = &Item> {
+    pub fn column(
+        &self,
+        x: usize,
+    ) -> impl DoubleEndedIterator<Item = &Item> + ExactSizeIterator<Item = &Item> {
         (0..self.height).map(move |y| &self.lines[y][x])
     }
 
-    pub fn columns(&self) -> impl Iterator<Item = impl Iterator<Item = &Item>> {
+    pub fn columns(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = impl DoubleEndedIterator<Item = &Item>> {
         (0..self.width).map(|x| self.column(x))
     }
 
@@ -182,21 +210,5 @@ impl<Item> Index<Coord> for Grid<Item> {
 impl<Item> IndexMut<Coord> for Grid<Item> {
     fn index_mut(&mut self, (x, y): Coord) -> &mut Self::Output {
         &mut self.lines[y][x]
-    }
-}
-
-impl ByteGrid {
-    pub fn from_lines(input: &str) -> ByteGrid {
-        let lines = input
-            .lines()
-            .map(|l| l.as_bytes().iter().copied().collect_vec())
-            .collect_vec();
-        let width = lines[0].len();
-        let height = lines.len();
-        ByteGrid {
-            lines,
-            width,
-            height,
-        }
     }
 }
