@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.75"
+bitflags = "2.4.1"
 clap = { version = "4.4.10", features = ["derive"] }
 colored = "2.1.0"
 itertools = "0.10.5"
@@ -77,3 +78,7 @@ path = "src/day14/main.rs"
 [[bin]]
 name = "day15"
 path = "src/day15/main.rs"
+
+[[bin]]
+name = "day16"
+path = "src/day16/main.rs"

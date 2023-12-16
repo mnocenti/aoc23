@@ -194,6 +194,14 @@ impl<Item> Grid<Item> {
         }
     }
 
+    pub fn get_mut(&mut self, (x, y): Coord) -> Option<&mut Item> {
+        if x >= self.width || y >= self.height {
+            None
+        } else {
+            Some(&mut self[(x, y)])
+        }
+    }
+
     pub fn get_with_coord(&self, (x, y): Coord) -> Option<(Coord, &Item)> {
         if x >= self.width || y >= self.height {
             None
