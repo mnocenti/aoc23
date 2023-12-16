@@ -7,6 +7,7 @@ use aoc23::{
 };
 use bitflags::bitflags;
 use colored::Colorize;
+use rayon::prelude::*;
 
 main!(46, 51);
 
@@ -48,6 +49,7 @@ fn part2(cave: &Cave) -> Result<usize> {
         .chain((0..cave.height).map(|y| ((cave.width - 1, y), BeamDir::Left)));
 
     all_starting_points
+        .par_bridge()
         .map(|(coord, dir)| {
             let mut cave = cave.clone();
             add_beam(&mut cave, coord, dir);
@@ -102,6 +104,10 @@ fn add_beam(cave: &mut Grid<Tile>, coord: Coord, dir: BeamDir) {
     }
 }
 
+fn add_beam_from(cave: &mut Grid<Tile>, coord: Coord, dir: BeamDir) {
+    add_beam(cave, get_next(coord, dir), dir)
+}
+
 fn flip(dir: BeamDir) -> BeamDir {
     match dir {
         BeamDir::Up => BeamDir::Down,
@@ -110,10 +116,6 @@ fn flip(dir: BeamDir) -> BeamDir {
         BeamDir::Right => BeamDir::Left,
         _ => panic!("flip requires a single direction, got {dir:?}"),
     }
-}
-
-fn add_beam_from(cave: &mut Grid<Tile>, coord: Coord, dir: BeamDir) {
-    add_beam(cave, get_next(coord, dir), dir)
 }
 
 fn reflect(dir: BeamDir, mirror: u8) -> BeamDir {
