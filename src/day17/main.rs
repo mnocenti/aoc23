@@ -1,42 +1,57 @@
 use std::{
     cmp::{Ordering, Reverse},
-    collections::{BinaryHeap, HashMap},
+    collections::BinaryHeap,
 };
 
 use aoc23::{
-    grid::{ByteGrid, Coord},
+    grid::{Coord, Grid},
     *,
 };
 
 main!(102, 94);
 
-type Map = ByteGrid;
+#[derive(Debug, Clone)]
+struct Tile {
+    cost: u32,
+    min_distance: [u32; 4], // min distance for each direction
+}
+
+type Map = Grid<Tile>;
 
 fn parse(input: &str) -> Result<Map> {
-    Ok(Map::from_lines_mapped(input, |b| b - b'0'))
+    Ok(Map::from_lines_mapped(input, |b| Tile {
+        cost: (b - b'0') as u32,
+        min_distance: [u32::MAX; 4],
+    }))
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 enum Dir {
-    Up,
-    Down,
-    Left,
-    Right,
+    Up = 0,
+    Down = 1,
+    Left = 2,
+    Right = 3,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Node {
-    distance: usize,
+    distance: u32,
     coord: Coord,
     dir: Dir,
 }
 
-struct Graph {
-    by_distance: BinaryHeap<Node>,
-    by_coord: HashMap<Coord, Vec<Node>>,
+type Graph = BinaryHeap<Node>;
+
+fn part1(map: &Map) -> Result<u32> {
+    find_path(map, 1, 3)
 }
 
-fn part1(map: &Map) -> Result<usize> {
+fn part2(map: &Map) -> Result<u32> {
+    find_path(map, 4, 10)
+}
+
+fn find_path(map: &Map, min_straight: u8, max_straight: u8) -> Result<u32> {
+    let mut map = map.clone();
     let destination = (map.width - 1, map.height - 1);
     let mut graph = Graph::new();
     graph.push(Node {
@@ -51,42 +66,24 @@ fn part1(map: &Map) -> Result<usize> {
     });
     while !graph.peek().is_some_and(|node| node.coord == destination) {
         let node = graph.pop().expect("I'm lost");
-        add_nodes_from(&mut graph, map, &node, rotate_clockwise(node.dir), 1, 3);
+        if node.distance > map[node.coord].min_distance[node.dir as usize] {
+            continue;
+        }
         add_nodes_from(
             &mut graph,
-            map,
+            &mut map,
             &node,
-            rotate_counter_clockwise(node.dir),
-            1,
-            3,
+            rotate_clockwise(node.dir),
+            min_straight,
+            max_straight,
         );
-    }
-    Ok(graph.pop().unwrap().distance)
-}
-
-fn part2(map: &Map) -> Result<usize> {
-    let destination = (map.width - 1, map.height - 1);
-    let mut graph = Graph::new();
-    graph.push(Node {
-        distance: 0,
-        coord: (0, 0),
-        dir: Dir::Left,
-    });
-    graph.push(Node {
-        distance: 0,
-        coord: (0, 0),
-        dir: Dir::Up,
-    });
-    while !graph.peek().is_some_and(|node| node.coord == destination) {
-        let node = graph.pop().expect("I'm lost");
-        add_nodes_from(&mut graph, map, &node, rotate_clockwise(node.dir), 4, 10);
         add_nodes_from(
             &mut graph,
-            map,
+            &mut map,
             &node,
             rotate_counter_clockwise(node.dir),
-            4,
-            10,
+            min_straight,
+            max_straight,
         );
     }
     Ok(graph.pop().unwrap().distance)
@@ -94,7 +91,7 @@ fn part2(map: &Map) -> Result<usize> {
 
 fn add_nodes_from(
     graph: &mut Graph,
-    map: &Map,
+    map: &mut Map,
     node: &Node,
     dir: Dir,
     min_straight: u8,
@@ -104,10 +101,12 @@ fn add_nodes_from(
     let mut total_distance = node.distance;
     for i in 0..max_straight {
         next = get_next(next, dir);
-        if let Some(distance) = map.get(next) {
-            total_distance += *distance as usize;
-            if i + 1 >= min_straight {
-                graph.push_if_better(Node {
+        if let Some(tile) = map.get_mut(next) {
+            total_distance += tile.cost;
+            let min_distance = &mut tile.min_distance[dir as usize];
+            if i + 1 >= min_straight && total_distance < *min_distance {
+                *min_distance = total_distance;
+                graph.push(Node {
                     distance: total_distance,
                     coord: next,
                     dir,
@@ -155,51 +154,5 @@ impl Ord for Node {
 impl PartialOrd for Node {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
-    }
-}
-
-impl Graph {
-    fn new() -> Graph {
-        Graph {
-            by_distance: BinaryHeap::new(),
-            by_coord: HashMap::new(),
-        }
-    }
-
-    fn push(&mut self, node: Node) {
-        self.by_coord
-            .entry(node.coord)
-            .and_modify(|nodes| nodes.push(node.clone()))
-            .or_insert(vec![node.clone()]);
-        self.by_distance.push(node);
-    }
-
-    fn peek(&self) -> Option<&Node> {
-        self.by_distance.peek()
-    }
-
-    fn pop(&mut self) -> Option<Node> {
-        if let Some(node) = self.by_distance.pop() {
-            if let Some(nodes) = self.by_coord.get_mut(&node.coord) {
-                if let Some(pos) = nodes.iter().position(|n| *n == node) {
-                    nodes.remove(pos);
-                }
-            }
-            Some(node)
-        } else {
-            None
-        }
-    }
-
-    fn push_if_better(&mut self, node: Node) {
-        if let Some(nodes) = self.by_coord.get(&node.coord) {
-            if nodes
-                .iter()
-                .any(|n| n.dir == node.dir && n.distance <= node.distance)
-            {
-                return;
-            }
-        }
-        self.push(node);
     }
 }
