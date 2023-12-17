@@ -29,7 +29,6 @@ struct Node {
     distance: usize,
     coord: Coord,
     dir: Dir,
-    straight_count: u8,
 }
 
 struct Graph {
@@ -43,21 +42,23 @@ fn part1(map: &Map) -> Result<usize> {
     graph.push(Node {
         distance: 0,
         coord: (0, 0),
-        dir: Dir::Right,
-        straight_count: 0,
+        dir: Dir::Left,
+    });
+    graph.push(Node {
+        distance: 0,
+        coord: (0, 0),
+        dir: Dir::Up,
     });
     while !graph.peek().is_some_and(|node| node.coord == destination) {
         let node = graph.pop().expect("I'm lost");
-        if node.straight_count < 3 {
-            add_node_from(&mut graph, map, &node, node.dir, 0);
-        }
-        add_node_from(&mut graph, map, &node, rotate_clockwise(node.dir), 0);
-        add_node_from(
+        add_nodes_from(&mut graph, map, &node, rotate_clockwise(node.dir), 1, 3);
+        add_nodes_from(
             &mut graph,
             map,
             &node,
             rotate_counter_clockwise(node.dir),
-            0,
+            1,
+            3,
         );
     }
     Ok(graph.pop().unwrap().distance)
@@ -69,49 +70,52 @@ fn part2(map: &Map) -> Result<usize> {
     graph.push(Node {
         distance: 0,
         coord: (0, 0),
-        dir: Dir::Right,
-        straight_count: 0,
+        dir: Dir::Left,
     });
-    while !graph
-        .peek()
-        .is_some_and(|node| node.coord == destination && node.straight_count >= 4)
-    {
+    graph.push(Node {
+        distance: 0,
+        coord: (0, 0),
+        dir: Dir::Up,
+    });
+    while !graph.peek().is_some_and(|node| node.coord == destination) {
         let node = graph.pop().expect("I'm lost");
-        if node.straight_count < 10 {
-            add_node_from(&mut graph, map, &node, node.dir, 4);
-        }
-        if node.straight_count == 0 || node.straight_count >= 4 {
-            add_node_from(&mut graph, map, &node, rotate_clockwise(node.dir), 4);
-            add_node_from(
-                &mut graph,
-                map,
-                &node,
-                rotate_counter_clockwise(node.dir),
-                4,
-            );
-        }
+        add_nodes_from(&mut graph, map, &node, rotate_clockwise(node.dir), 4, 10);
+        add_nodes_from(
+            &mut graph,
+            map,
+            &node,
+            rotate_counter_clockwise(node.dir),
+            4,
+            10,
+        );
     }
     Ok(graph.pop().unwrap().distance)
 }
 
-fn add_node_from(graph: &mut Graph, map: &Map, node: &Node, dir: Dir, min_straight: u8) {
-    let straight_count = if dir == node.dir {
-        node.straight_count + 1
-    } else {
-        1
-    };
-    let next_pos = get_next(node.coord, dir);
-    if let Some(distance) = map.get(next_pos) {
-        let total_distance = node.distance + *distance as usize;
-        graph.push_if_better(
-            Node {
-                distance: total_distance,
-                coord: next_pos,
-                dir,
-                straight_count,
-            },
-            min_straight,
-        );
+fn add_nodes_from(
+    graph: &mut Graph,
+    map: &Map,
+    node: &Node,
+    dir: Dir,
+    min_straight: u8,
+    max_straight: u8,
+) {
+    let mut next = node.coord;
+    let mut total_distance = node.distance;
+    for i in 0..max_straight {
+        next = get_next(next, dir);
+        if let Some(distance) = map.get(next) {
+            total_distance += *distance as usize;
+            if i + 1 >= min_straight {
+                graph.push_if_better(Node {
+                    distance: total_distance,
+                    coord: next,
+                    dir,
+                });
+            }
+        } else {
+            break;
+        }
     }
 }
 
@@ -187,14 +191,12 @@ impl Graph {
         }
     }
 
-    fn push_if_better(&mut self, node: Node, min_straight: u8) {
+    fn push_if_better(&mut self, node: Node) {
         if let Some(nodes) = self.by_coord.get(&node.coord) {
-            if nodes.iter().any(|n| {
-                n.dir == node.dir
-                    && n.distance <= node.distance
-                    && n.straight_count <= node.straight_count
-                    && n.straight_count >= min_straight
-            }) {
+            if nodes
+                .iter()
+                .any(|n| n.dir == node.dir && n.distance <= node.distance)
+            {
                 return;
             }
         }
