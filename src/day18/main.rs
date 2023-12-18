@@ -1,155 +1,94 @@
-use std::fmt::Display;
-
 use anyhow::anyhow;
-use aoc23::{
-    grid::{Coord, Grid},
-    *,
-};
+use aoc23::*;
+use itertools::Itertools;
 
-main!(62, 0);
+main!(62, 952408144115);
 
-#[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+type Coord = (isize, isize);
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 enum Dir {
-    #[default]
     Up = 0,
     Down = 1,
     Left = 2,
     Right = 3,
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-struct Color {
-    r: u8,
-    g: u8,
-    b: u8,
-}
-
-#[apply(parse_ordered!)]
-#[delim(' ')]
-#[derive(Debug, Default)]
 struct Instr {
-    #[parse()]
     dir: Dir,
-    #[parse()]
-    count: usize,
-    #[parse(re("\\((#[0-9a-f]+)\\)"))]
-    color: Color,
+    count: isize,
 }
 
-type DigPlan = Vec<Instr>;
+type DigPlan = (Vec<Instr>, Vec<Instr>);
 
 fn parse(input: &str) -> Result<DigPlan> {
-    collect_lines(input)
+    let instructions1 = input
+        .lines()
+        .map(|l| -> Result<Instr> {
+            let mut split = l.split(' ');
+            Ok(Instr {
+                dir: split.next().ok_or(anyhow!("parse failed"))?.parse()?,
+                count: split.next().ok_or(anyhow!("parse failed"))?.parse()?,
+            })
+        })
+        .try_collect()?;
+    let instructions2 = input
+        .lines()
+        .map(|l| -> Result<Instr> {
+            let hexa = l.split_once('#').ok_or(anyhow!("parse failed"))?.1;
+            Ok(Instr {
+                dir: match hexa.chars().nth(5) {
+                    Some('0') => Dir::Right,
+                    Some('1') => Dir::Down,
+                    Some('2') => Dir::Left,
+                    Some('3') => Dir::Up,
+                    _ => Err(anyhow!("parse failed"))?,
+                },
+                count: isize::from_str_radix(&hexa[0..5], 16)?,
+            })
+        })
+        .try_collect()?;
+
+    Ok((instructions1, instructions2))
 }
 
-#[derive(Debug, Default, Clone)]
-struct Tile {
-    dug: bool,
-    color: Option<Color>,
+fn part1((instructions, _): &DigPlan) -> Result<usize> {
+    let polygon = make_polygon(instructions);
+    Ok(area(&polygon))
 }
 
-fn part1(plan: &DigPlan) -> Result<usize> {
-    let mut map = dig_edges(plan);
-    //println!("{}", MapDisplay(&map));
-    dig_inside(&mut map);
-    Ok(map.iter().filter(|tile| tile.dug).count())
+fn part2((_, instructions): &DigPlan) -> Result<usize> {
+    let polygon = make_polygon(instructions);
+    Ok(area(&polygon))
 }
 
-fn dig_edges(plan: &Vec<Instr>) -> Grid<Tile> {
-    let (start_point, width, height) = get_bounding_box(plan);
-    let mut map = Grid::new(width, height);
-    dig(&mut map, start_point, None);
-    let mut coord = start_point;
-    for instr in plan {
-        for _ in 0..instr.count {
-            coord = get_next(coord, instr.dir);
-            dig(&mut map, coord, Some(instr.color));
-        }
-    }
-    map
-}
-
-fn dig_inside(map: &mut Grid<Tile>) {
-    for y in 0..map.height {
-        let mut inside = false;
-        let mut in_wall = false;
-        let mut enters_from_below = false;
-        for x in 0..map.width {
-            let is_dug = |x, y| map.get((x, y)).map(|t| t.dug).unwrap_or(false);
-            let tile = &map[(x, y)];
-            if tile.dug {
-                if !in_wall {
-                    in_wall = true;
-                    enters_from_below = is_dug(x, y + 1);
-                    if !is_dug(x + 1, y) {
-                        inside = !inside;
-                    }
-                }
-            } else {
-                if in_wall {
-                    let exits_from_below = is_dug(x - 1, y + 1);
-                    if enters_from_below != exits_from_below {
-                        inside = !inside;
-                    }
-                }
-                in_wall = false;
-                map[(x, y)].dug = inside;
-            }
-            //println!("{}", MapDisplay(map));
-        }
-    }
-}
-
-fn get_next((x, y): Coord, dir: Dir) -> Coord {
-    match dir {
-        Dir::Up => (x, y.wrapping_sub(1)),
-        Dir::Left => (x.wrapping_sub(1), y),
-        Dir::Down => (x, y + 1),
-        Dir::Right => (x + 1, y),
-    }
-}
-
-fn dig(map: &mut Grid<Tile>, coord: (usize, usize), color: Option<Color>) {
-    let tile = &mut map[coord];
-    tile.dug = true;
-    tile.color = color;
-}
-
-fn get_bounding_box(plan: &[Instr]) -> (Coord, usize, usize) {
-    let (_, (u, d, l, r)) = plan.iter().fold(
-        ((0, 0), (0, 0, 0, 0)),
-        |(mut coord, (mut u, mut d, mut l, mut r)), instr| {
+fn make_polygon(instructions: &[Instr]) -> Vec<Coord> {
+    instructions
+        .iter()
+        .scan((0, 0), |(x, y), instr| {
             match instr.dir {
-                Dir::Up => {
-                    coord.1 -= instr.count as isize;
-                    u = u.min(coord.1)
-                }
-                Dir::Down => {
-                    coord.1 += instr.count as isize;
-                    d = d.max(coord.1)
-                }
-                Dir::Left => {
-                    coord.0 -= instr.count as isize;
-                    l = l.min(coord.0)
-                }
-                Dir::Right => {
-                    coord.0 += instr.count as isize;
-                    r = r.max(coord.0)
-                }
+                Dir::Up => *y += instr.count,
+                Dir::Down => *y -= instr.count,
+                Dir::Left => *x -= instr.count,
+                Dir::Right => *x += instr.count,
             }
-            (coord, (u, d, l, r))
-        },
-    );
-    let start_point = ((-l) as usize, (-u) as usize);
-    (
-        start_point,
-        l.abs_diff(0) + r.abs_diff(0) + 1,
-        u.abs_diff(0) + d.abs_diff(0) + 1,
-    )
+            Some((*x, *y))
+        })
+        .collect_vec()
 }
 
-fn part2(_plan: &DigPlan) -> Result<usize> {
-    Ok(0)
+fn area(polygon: &[(isize, isize)]) -> usize {
+    let inside_area = polygon
+        .iter()
+        .tuple_windows()
+        .map(|((x0, y0), (x1, y1))| x0 * y1 - x1 * y0)
+        .sum::<isize>()
+        .unsigned_abs()
+        / 2;
+    let distance = |((x0, y0), (x1, y1)): (&Coord, &Coord)| x0.abs_diff(*x1) + y0.abs_diff(*y1);
+    let perimeter: usize = polygon.iter().tuple_windows().map(distance).sum::<usize>()
+        + distance((polygon.first().unwrap(), polygon.last().unwrap()));
+    inside_area + perimeter / 2 + 1
 }
 
 impl FromStr for Dir {
@@ -163,34 +102,5 @@ impl FromStr for Dir {
             Some('R') => Ok(Dir::Right),
             _ => Err(anyhow!("failed to parse direction")),
         }
-    }
-}
-
-impl FromStr for Color {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Color {
-            r: u8::from_str_radix(&s[1..3], 16)?,
-            g: u8::from_str_radix(&s[3..5], 16)?,
-            b: u8::from_str_radix(&s[5..7], 16)?,
-        })
-    }
-}
-
-struct MapDisplay<'a>(&'a Grid<Tile>);
-
-impl<'a> Display for MapDisplay<'a> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f)?;
-        let map = self.0;
-        for line in &map.lines {
-            for tile in line {
-                let c = if tile.dug { '#' } else { '.' };
-                write!(f, "{}", c)?;
-            }
-            writeln!(f)?;
-        }
-        Ok(())
     }
 }
