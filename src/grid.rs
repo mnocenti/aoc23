@@ -32,6 +32,19 @@ where
     }
 }
 
+impl<Item> Grid<Item>
+where
+    Item: Default + Clone,
+{
+    pub fn new(width: usize, height: usize) -> Grid<Item> {
+        Grid {
+            lines: vec![vec![Item::default(); width]; height],
+            width,
+            height,
+        }
+    }
+}
+
 impl<Item> Grid<Item> {
     pub fn row(
         &self,
