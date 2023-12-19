@@ -73,8 +73,8 @@ macro_rules! main {
                 p2_res
             };
             let (mut p1_res, mut p2_res) = match args.part {
-                Some(Part::Part1) => (Some(p1()), None),
-                Some(Part::Part2) => (None, Some(p2())),
+                Some(aoc23::Part::Part1) => (Some(p1()), None),
+                Some(aoc23::Part::Part2) => (None, Some(p2())),
                 None => (Some(p1()), Some(p2())),
             };
             aoc23::print_results(t_parse, p1_res, t1, p2_res, t2)
@@ -187,6 +187,14 @@ macro_rules! set_field_ordered {
     }};
     ($t:ident, $split:ident, $member:ident (collect(remaining))) => {{
         $t.$member = $split.map(|s| s.parse()).try_collect()?;
+    }};
+    ($t:ident, $split:ident, $member:ident (collect(lines))) => {{
+        let s = $split.next().expect("not enough delimiters");
+        $t.$member = s
+            .lines()
+            .filter(|s| !s.is_empty())
+            .map(|st| st.parse())
+            .try_collect()?;
     }};
     ($t:ident, $split:ident, $member:ident (collect($delim:literal))) => {{
         let s = $split.next().expect("not enough delimiters");
