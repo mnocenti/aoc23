@@ -11,7 +11,7 @@ use colored::{ColoredString, Colorize};
 use crossterm_cursor::cursor;
 use itertools::Itertools;
 
-main!(32000000, 0);
+main!();
 
 const DISPLAY: bool = false;
 

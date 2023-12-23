@@ -1,5 +1,8 @@
 use itertools::Itertools;
-use std::ops::{Index, IndexMut, Range};
+use std::{
+    fmt::Display,
+    ops::{Index, IndexMut, Range},
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Grid<Item> {
@@ -153,6 +156,14 @@ impl<Item> Grid<Item> {
         self.lines.iter().flat_map(|line| line.iter())
     }
 
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Item> {
+        self.lines.iter_mut().flat_map(|line| line.iter_mut())
+    }
+
+    pub fn coords_iter(&self) -> impl Iterator<Item = Coord> {
+        (0..self.width).cartesian_product(0..self.height)
+    }
+
     pub fn indexed_iter(&self) -> impl DoubleEndedIterator<Item = (Coord, &Item)> {
         self.lines
             .iter()
@@ -173,30 +184,55 @@ impl<Item> Grid<Item> {
         )
     }
 
-    pub fn get_above(&self, (x, y): Coord) -> Option<&Item> {
-        self.get((x, y.wrapping_sub(1)))
+    pub fn get_above(&self, coord: Coord) -> Option<&Item> {
+        self.get(Self::above(coord))
     }
-    pub fn get_below(&self, (x, y): Coord) -> Option<&Item> {
-        self.get((x, y + 1))
+    pub fn get_below(&self, coord: Coord) -> Option<&Item> {
+        self.get(Self::below(coord))
     }
-    pub fn get_left_of(&self, (x, y): Coord) -> Option<&Item> {
-        self.get((x.wrapping_sub(1), y))
+    pub fn get_left_of(&self, coord: Coord) -> Option<&Item> {
+        self.get(Self::left(coord))
     }
-    pub fn get_right_of(&self, (x, y): Coord) -> Option<&Item> {
-        self.get((x + 1, y))
+    pub fn get_right_of(&self, coord: Coord) -> Option<&Item> {
+        self.get(Self::right(coord))
     }
 
-    pub fn get_above_coord(&self, (x, y): Coord) -> Option<(Coord, &Item)> {
-        self.get_with_coord((x, y.wrapping_sub(1)))
+    pub fn get_cardinally_adjacent_coords(&self, coord: Coord) -> (Coord, Coord, Coord, Coord) {
+        (
+            Self::above(coord),
+            Self::below(coord),
+            Self::left(coord),
+            Self::right(coord),
+        )
     }
-    pub fn get_below_coord(&self, (x, y): Coord) -> Option<(Coord, &Item)> {
-        self.get_with_coord((x, y + 1))
+
+    pub fn above((x, y): Coord) -> Coord {
+        (x, y.wrapping_sub(1))
     }
-    pub fn get_left_coord(&self, (x, y): Coord) -> Option<(Coord, &Item)> {
-        self.get_with_coord((x.wrapping_sub(1), y))
+
+    pub fn below((x, y): Coord) -> Coord {
+        (x, y + 1)
     }
-    pub fn get_right_coord(&self, (x, y): Coord) -> Option<(Coord, &Item)> {
-        self.get_with_coord((x + 1, y))
+
+    pub fn left((x, y): Coord) -> Coord {
+        (x.wrapping_sub(1), y)
+    }
+
+    pub fn right((x, y): Coord) -> Coord {
+        (x + 1, y)
+    }
+
+    pub fn get_above_coord(&self, coord: Coord) -> Option<(Coord, &Item)> {
+        self.get_with_coord(Self::above(coord))
+    }
+    pub fn get_below_coord(&self, coord: Coord) -> Option<(Coord, &Item)> {
+        self.get_with_coord(Self::below(coord))
+    }
+    pub fn get_left_coord(&self, coord: Coord) -> Option<(Coord, &Item)> {
+        self.get_with_coord(Self::left(coord))
+    }
+    pub fn get_right_coord(&self, coord: Coord) -> Option<(Coord, &Item)> {
+        self.get_with_coord(Self::right(coord))
     }
 
     pub fn get(&self, (x, y): Coord) -> Option<&Item> {
@@ -235,5 +271,21 @@ impl<Item> Index<Coord> for Grid<Item> {
 impl<Item> IndexMut<Coord> for Grid<Item> {
     fn index_mut(&mut self, (x, y): Coord) -> &mut Self::Output {
         &mut self.lines[y][x]
+    }
+}
+
+impl<Item> Display for Grid<Item>
+where
+    Item: Into<char> + Clone,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for line in &self.lines {
+            for item in line {
+                let c: char = item.clone().into();
+                write!(f, "{}", c)?;
+            }
+            writeln!(f)?;
+        }
+        Ok(())
     }
 }
