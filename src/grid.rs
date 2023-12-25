@@ -15,6 +15,26 @@ pub type ByteGrid = Grid<u8>;
 
 pub type Coord = (usize, usize);
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Dir {
+    Up,
+    Down,
+    Left,
+    Right,
+}
+impl Dir {
+    pub fn is_reverse(&self, dir: Dir) -> bool {
+        match dir {
+            Dir::Up => self == &Dir::Down,
+            Dir::Down => self == &Dir::Up,
+            Dir::Left => self == &Dir::Right,
+            Dir::Right => self == &Dir::Left,
+        }
+    }
+}
+
+pub type Neighbor<Item> = (Dir, Option<Item>);
+
 impl<Item> Grid<Item>
 where
     Item: From<u8>,
@@ -182,6 +202,33 @@ impl<Item> Grid<Item> {
             self.get_left_of(coord),
             self.get_right_of(coord),
         )
+    }
+
+    pub fn get_neighbors(&self, coord: Coord) -> [(Dir, Option<&Item>); 4] {
+        [
+            (Dir::Up, self.get_above(coord)),
+            (Dir::Down, self.get_below(coord)),
+            (Dir::Left, self.get_left_of(coord)),
+            (Dir::Right, self.get_right_of(coord)),
+        ]
+    }
+
+    pub fn get_neighbors_coord(coord: Coord) -> [(Dir, Coord); 4] {
+        [
+            (Dir::Up, Self::above(coord)),
+            (Dir::Down, Self::below(coord)),
+            (Dir::Left, Self::left(coord)),
+            (Dir::Right, Self::right(coord)),
+        ]
+    }
+
+    pub fn get_in_dir(&self, coord: Coord, dir: Dir) -> Option<&Item> {
+        match dir {
+            Dir::Up => self.get_above(coord),
+            Dir::Down => self.get_below(coord),
+            Dir::Left => self.get_left_of(coord),
+            Dir::Right => self.get_right_of(coord),
+        }
     }
 
     pub fn get_above(&self, coord: Coord) -> Option<&Item> {
