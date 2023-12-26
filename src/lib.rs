@@ -186,6 +186,10 @@ macro_rules! set_field_ordered {
         let s = $split.next().expect("not enough delimiters");
         $t.$member = s.parse()?;
     }};
+    ($t:ident, $split:ident, $member:ident (trim)) => {{
+        let s = $split.next().expect("not enough delimiters");
+        $t.$member = s.trim().parse()?;
+    }};
     ($t:ident, $split:ident, $member:ident (collect(remaining))) => {{
         $t.$member = $split.map(|s| s.parse()).try_collect()?;
     }};
